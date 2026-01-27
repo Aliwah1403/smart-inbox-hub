@@ -1,0 +1,172 @@
+import { useState, useMemo } from 'react';
+import { Plus, FileText } from 'lucide-react';
+import { useApp } from '@/context/AppContext';
+import { Document, DocumentFilters as FilterType } from '@/types';
+import { AppLayout } from '@/components/layout/AppLayout';
+import { DocumentFilters } from '@/components/documents/DocumentFilters';
+import { DocumentTable } from '@/components/documents/DocumentTable';
+import { DocumentDetail } from '@/components/documents/DocumentDetail';
+import { UploadModal } from '@/components/documents/UploadModal';
+import { BatchActions } from '@/components/documents/BatchActions';
+import { Button } from '@/components/ui/button';
+
+const ITEMS_PER_PAGE = 10;
+
+export default function Documents() {
+  const { documents, user } = useApp();
+  const [filters, setFilters] = useState<FilterType>({
+    search: '',
+    tags: [],
+  });
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [uploadOpen, setUploadOpen] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const isAdmin = user?.role === 'admin';
+
+  // Filter documents based on role and filters
+  const filteredDocuments = useMemo(() => {
+    let docs = documents;
+
+    // Staff can only see their own documents
+    if (!isAdmin && user) {
+      docs = docs.filter(d => d.uploaderId === user.id);
+    }
+
+    // Apply search filter
+    if (filters.search) {
+      const search = filters.search.toLowerCase();
+      docs = docs.filter(d => 
+        d.title.toLowerCase().includes(search) ||
+        d.filename.toLowerCase().includes(search)
+      );
+    }
+
+    // Apply date filter
+    if (filters.dateFrom) {
+      docs = docs.filter(d => d.uploadDate >= filters.dateFrom!);
+    }
+    if (filters.dateTo) {
+      docs = docs.filter(d => d.uploadDate <= filters.dateTo!);
+    }
+
+    // Apply source filter
+    if (filters.source) {
+      docs = docs.filter(d => d.source === filters.source);
+    }
+
+    // Apply status filter
+    if (filters.status) {
+      docs = docs.filter(d => d.status === filters.status);
+    }
+
+    // Apply tag filter
+    if (filters.tags.length > 0) {
+      docs = docs.filter(d => 
+        filters.tags.some(tag => d.tags.includes(tag))
+      );
+    }
+
+    return docs;
+  }, [documents, filters, isAdmin, user]);
+
+  // Paginate
+  const paginatedDocuments = useMemo(() => {
+    const start = (currentPage - 1) * ITEMS_PER_PAGE;
+    return filteredDocuments.slice(start, start + ITEMS_PER_PAGE);
+  }, [filteredDocuments, currentPage]);
+
+  const totalPages = Math.ceil(filteredDocuments.length / ITEMS_PER_PAGE);
+
+  const handleViewDocument = (doc: Document) => {
+    setSelectedDocument(doc);
+    setDetailOpen(true);
+  };
+
+  const handleEditDocument = (doc: Document) => {
+    setSelectedDocument(doc);
+    setDetailOpen(true);
+  };
+
+  return (
+    <AppLayout>
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold">Documents</h1>
+            <p className="text-muted-foreground">
+              {filteredDocuments.length} documents
+              {!isAdmin && ' (showing your uploads)'}
+            </p>
+          </div>
+          <Button onClick={() => setUploadOpen(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            Upload document
+          </Button>
+        </div>
+
+        {/* Filters */}
+        <DocumentFilters filters={filters} onFiltersChange={setFilters} />
+
+        {/* Batch actions (Admin only) */}
+        {isAdmin && (
+          <BatchActions 
+            selectedIds={selectedIds} 
+            onClearSelection={() => setSelectedIds([])} 
+          />
+        )}
+
+        {/* Table */}
+        <DocumentTable
+          documents={paginatedDocuments}
+          selectedIds={selectedIds}
+          onSelectIds={setSelectedIds}
+          onViewDocument={handleViewDocument}
+          onEditDocument={handleEditDocument}
+        />
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-muted-foreground">
+              Showing {(currentPage - 1) * ITEMS_PER_PAGE + 1} to{' '}
+              {Math.min(currentPage * ITEMS_PER_PAGE, filteredDocuments.length)} of{' '}
+              {filteredDocuments.length} documents
+            </p>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={currentPage === 1}
+                onClick={() => setCurrentPage(p => p - 1)}
+              >
+                Previous
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={currentPage === totalPages}
+                onClick={() => setCurrentPage(p => p + 1)}
+              >
+                Next
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* Document detail sheet */}
+        <DocumentDetail
+          document={selectedDocument}
+          open={detailOpen}
+          onOpenChange={setDetailOpen}
+        />
+
+        {/* Upload modal */}
+        <UploadModal open={uploadOpen} onOpenChange={setUploadOpen} />
+      </div>
+    </AppLayout>
+  );
+}
