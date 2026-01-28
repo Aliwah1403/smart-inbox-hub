@@ -1,14 +1,17 @@
-import { Shield, Users, Bell, Database } from 'lucide-react';
+import { Shield, Users, Bell, Database, Sun, Moon, Monitor } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
+import { useTheme } from '@/context/ThemeContext';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Navigate } from 'react-router-dom';
 
 export default function Settings() {
   const { user } = useApp();
+  const { theme, setTheme } = useTheme();
 
   // Only admins can access settings
   if (user?.role !== 'admin') {
@@ -158,6 +161,51 @@ export default function Settings() {
                   </p>
                 </div>
                 <Switch defaultChecked />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Appearance */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <Sun className="h-5 w-5 text-primary" />
+                <CardTitle>Appearance</CardTitle>
+              </div>
+              <CardDescription>
+                Customize the look and feel
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-3">
+                <Label>Theme</Label>
+                <RadioGroup 
+                  value={theme} 
+                  onValueChange={(value) => setTheme(value as 'light' | 'dark' | 'system')}
+                  className="flex gap-4"
+                >
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="light" id="light" />
+                    <Label htmlFor="light" className="flex items-center gap-2 cursor-pointer">
+                      <Sun className="h-4 w-4" />
+                      Light
+                    </Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="dark" id="dark" />
+                    <Label htmlFor="dark" className="flex items-center gap-2 cursor-pointer">
+                      <Moon className="h-4 w-4" />
+                      Dark
+                    </Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="system" id="system" />
+                    <Label htmlFor="system" className="flex items-center gap-2 cursor-pointer">
+                      <Monitor className="h-4 w-4" />
+                      System
+                    </Label>
+                  </div>
+                </RadioGroup>
               </div>
             </CardContent>
           </Card>

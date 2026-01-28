@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
-import { Plus, FileText } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
+import { useFolders } from '@/context/FolderContext';
 import { Document, DocumentFilters as FilterType } from '@/types';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { DocumentFilters } from '@/components/documents/DocumentFilters';
@@ -8,12 +9,15 @@ import { DocumentTable } from '@/components/documents/DocumentTable';
 import { DocumentDetail } from '@/components/documents/DocumentDetail';
 import { UploadModal } from '@/components/documents/UploadModal';
 import { BatchActions } from '@/components/documents/BatchActions';
+import { PDFPreview } from '@/components/documents/PDFPreview';
+import { ShareDialog } from '@/components/documents/ShareDialog';
 import { Button } from '@/components/ui/button';
 
 const ITEMS_PER_PAGE = 10;
 
 export default function Documents() {
   const { documents, user } = useApp();
+  const { selectedFolderId, folders } = useFolders();
   const [filters, setFilters] = useState<FilterType>({
     search: '',
     tags: [],
@@ -22,9 +26,12 @@ export default function Documents() {
   const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [uploadOpen, setUploadOpen] = useState(false);
+  const [pdfPreviewOpen, setPdfPreviewOpen] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
 
   const isAdmin = user?.role === 'admin';
+  const currentFolder = folders.find(f => f.id === selectedFolderId);
 
   // Filter documents based on role and filters
   const filteredDocuments = useMemo(() => {
@@ -82,12 +89,17 @@ export default function Documents() {
 
   const handleViewDocument = (doc: Document) => {
     setSelectedDocument(doc);
-    setDetailOpen(true);
+    setPdfPreviewOpen(true);
   };
 
   const handleEditDocument = (doc: Document) => {
     setSelectedDocument(doc);
     setDetailOpen(true);
+  };
+
+  const handleShareDocument = (doc: Document) => {
+    setSelectedDocument(doc);
+    setShareOpen(true);
   };
 
   return (
@@ -96,7 +108,9 @@ export default function Documents() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold">Documents</h1>
+            <h1 className="text-2xl font-bold">
+              {currentFolder?.name || 'Documents'}
+            </h1>
             <p className="text-muted-foreground">
               {filteredDocuments.length} documents
               {!isAdmin && ' (showing your uploads)'}
@@ -126,6 +140,7 @@ export default function Documents() {
           onSelectIds={setSelectedIds}
           onViewDocument={handleViewDocument}
           onEditDocument={handleEditDocument}
+          onShareDocument={handleShareDocument}
         />
 
         {/* Pagination */}
@@ -162,6 +177,20 @@ export default function Documents() {
           document={selectedDocument}
           open={detailOpen}
           onOpenChange={setDetailOpen}
+        />
+
+        {/* PDF Preview */}
+        <PDFPreview
+          document={selectedDocument}
+          open={pdfPreviewOpen}
+          onOpenChange={setPdfPreviewOpen}
+        />
+
+        {/* Share Dialog */}
+        <ShareDialog
+          document={selectedDocument}
+          open={shareOpen}
+          onOpenChange={setShareOpen}
         />
 
         {/* Upload modal */}
