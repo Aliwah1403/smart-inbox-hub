@@ -3,6 +3,7 @@ import { Navigate } from 'react-router-dom';
 import { useApp } from '@/context/AppContext';
 import { AppHeader } from './AppHeader';
 import { AppSidebar } from './AppSidebar';
+import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -16,14 +17,14 @@ export function AppLayout({ children }: AppLayoutProps) {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <AppHeader />
+    <SidebarProvider>
       <AppSidebar />
-      <main className="ml-64 pt-16">
-        <div className="p-6">
+      <SidebarInset>
+        <AppHeader />
+        <main className="flex-1 p-6">
           {children}
-        </div>
-      </main>
-    </div>
+        </main>
+      </SidebarInset>
+    </SidebarProvider>
   );
 }

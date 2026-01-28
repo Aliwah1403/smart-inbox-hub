@@ -1,6 +1,5 @@
-import { useState } from 'react';
 import { format } from 'date-fns';
-import { FileText, MoreHorizontal, Eye, Edit, Trash2, Tag } from 'lucide-react';
+import { FileText, MoreHorizontal, Eye, Edit, Trash2, Share2 } from 'lucide-react';
 import { Document, DocumentSource, DocumentStatus } from '@/types';
 import { useApp } from '@/context/AppContext';
 import {
@@ -24,13 +23,14 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 
-interface DocumentTableProps {
+export interface DocumentTableProps {
   documents: Document[];
   isLoading?: boolean;
   selectedIds: string[];
   onSelectIds: (ids: string[]) => void;
   onViewDocument: (doc: Document) => void;
   onEditDocument: (doc: Document) => void;
+  onShareDocument?: (doc: Document) => void;
 }
 
 const sourceLabels: Record<DocumentSource, string> = {
@@ -72,6 +72,7 @@ export function DocumentTable({
   onSelectIds,
   onViewDocument,
   onEditDocument,
+  onShareDocument,
 }: DocumentTableProps) {
   const { user, deleteDocuments } = useApp();
   const isAdmin = user?.role === 'admin';
@@ -222,6 +223,12 @@ export function DocumentTable({
                       <Edit className="mr-2 h-4 w-4" />
                       Edit
                     </DropdownMenuItem>
+                    {onShareDocument && (
+                      <DropdownMenuItem onClick={() => onShareDocument(doc)}>
+                        <Share2 className="mr-2 h-4 w-4" />
+                        Share
+                      </DropdownMenuItem>
+                    )}
                     <DropdownMenuSeparator />
                     <DropdownMenuItem 
                       className="text-destructive"
