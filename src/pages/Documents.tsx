@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { Plus } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { useFolders } from '@/context/FolderContext';
@@ -11,6 +11,7 @@ import { UploadModal } from '@/components/documents/UploadModal';
 import { BatchActions } from '@/components/documents/BatchActions';
 import { PDFPreview } from '@/components/documents/PDFPreview';
 import { ShareDialog } from '@/components/documents/ShareDialog';
+import { DragDropZone } from '@/components/documents/DragDropZone';
 import { Button } from '@/components/ui/button';
 
 const ITEMS_PER_PAGE = 10;
@@ -26,9 +27,22 @@ export default function Documents() {
   const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [uploadOpen, setUploadOpen] = useState(false);
+  const [droppedFiles, setDroppedFiles] = useState<File[]>([]);
   const [pdfPreviewOpen, setPdfPreviewOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+
+  const handleFilesDropped = useCallback((files: File[]) => {
+    setDroppedFiles(files);
+    setUploadOpen(true);
+  }, []);
+
+  const handleUploadClose = useCallback((open: boolean) => {
+    setUploadOpen(open);
+    if (!open) {
+      setDroppedFiles([]);
+    }
+  }, []);
 
   const isAdmin = user?.role === 'admin';
   const currentFolder = folders.find(f => f.id === selectedFolderId);
@@ -104,98 +118,104 @@ export default function Documents() {
 
   return (
     <AppLayout>
-      <div className="space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold">
-              {currentFolder?.name || 'Documents'}
-            </h1>
-            <p className="text-muted-foreground">
-              {filteredDocuments.length} documents
-              {!isAdmin && ' (showing your uploads)'}
-            </p>
-          </div>
-          <Button onClick={() => setUploadOpen(true)}>
-            <Plus className="mr-2 h-4 w-4" />
-            Upload document
-          </Button>
-        </div>
-
-        {/* Filters */}
-        <DocumentFilters filters={filters} onFiltersChange={setFilters} />
-
-        {/* Batch actions (Admin only) */}
-        {isAdmin && (
-          <BatchActions 
-            selectedIds={selectedIds} 
-            onClearSelection={() => setSelectedIds([])} 
-          />
-        )}
-
-        {/* Table */}
-        <DocumentTable
-          documents={paginatedDocuments}
-          selectedIds={selectedIds}
-          onSelectIds={setSelectedIds}
-          onViewDocument={handleViewDocument}
-          onEditDocument={handleEditDocument}
-          onShareDocument={handleShareDocument}
-        />
-
-        {/* Pagination */}
-        {totalPages > 1 && (
+      <DragDropZone onFilesDropped={handleFilesDropped}>
+        <div className="space-y-6">
+          {/* Header */}
           <div className="flex items-center justify-between">
-            <p className="text-sm text-muted-foreground">
-              Showing {(currentPage - 1) * ITEMS_PER_PAGE + 1} to{' '}
-              {Math.min(currentPage * ITEMS_PER_PAGE, filteredDocuments.length)} of{' '}
-              {filteredDocuments.length} documents
-            </p>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={currentPage === 1}
-                onClick={() => setCurrentPage(p => p - 1)}
-              >
-                Previous
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={currentPage === totalPages}
-                onClick={() => setCurrentPage(p => p + 1)}
-              >
-                Next
-              </Button>
+            <div>
+              <h1 className="text-2xl font-bold">
+                {currentFolder?.name || 'Documents'}
+              </h1>
+              <p className="text-muted-foreground">
+                {filteredDocuments.length} documents
+                {!isAdmin && ' (showing your uploads)'}
+              </p>
             </div>
+            <Button onClick={() => setUploadOpen(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              Upload document
+            </Button>
           </div>
-        )}
 
-        {/* Document detail sheet */}
-        <DocumentDetail
-          document={selectedDocument}
-          open={detailOpen}
-          onOpenChange={setDetailOpen}
-        />
+          {/* Filters */}
+          <DocumentFilters filters={filters} onFiltersChange={setFilters} />
 
-        {/* PDF Preview */}
-        <PDFPreview
-          document={selectedDocument}
-          open={pdfPreviewOpen}
-          onOpenChange={setPdfPreviewOpen}
-        />
+          {/* Batch actions (Admin only) */}
+          {isAdmin && (
+            <BatchActions 
+              selectedIds={selectedIds} 
+              onClearSelection={() => setSelectedIds([])} 
+            />
+          )}
 
-        {/* Share Dialog */}
-        <ShareDialog
-          document={selectedDocument}
-          open={shareOpen}
-          onOpenChange={setShareOpen}
-        />
+          {/* Table */}
+          <DocumentTable
+            documents={paginatedDocuments}
+            selectedIds={selectedIds}
+            onSelectIds={setSelectedIds}
+            onViewDocument={handleViewDocument}
+            onEditDocument={handleEditDocument}
+            onShareDocument={handleShareDocument}
+          />
 
-        {/* Upload modal */}
-        <UploadModal open={uploadOpen} onOpenChange={setUploadOpen} />
-      </div>
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-muted-foreground">
+                Showing {(currentPage - 1) * ITEMS_PER_PAGE + 1} to{' '}
+                {Math.min(currentPage * ITEMS_PER_PAGE, filteredDocuments.length)} of{' '}
+                {filteredDocuments.length} documents
+              </p>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={currentPage === 1}
+                  onClick={() => setCurrentPage(p => p - 1)}
+                >
+                  Previous
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={currentPage === totalPages}
+                  onClick={() => setCurrentPage(p => p + 1)}
+                >
+                  Next
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* Document detail sheet */}
+          <DocumentDetail
+            document={selectedDocument}
+            open={detailOpen}
+            onOpenChange={setDetailOpen}
+          />
+
+          {/* PDF Preview */}
+          <PDFPreview
+            document={selectedDocument}
+            open={pdfPreviewOpen}
+            onOpenChange={setPdfPreviewOpen}
+          />
+
+          {/* Share Dialog */}
+          <ShareDialog
+            document={selectedDocument}
+            open={shareOpen}
+            onOpenChange={setShareOpen}
+          />
+
+          {/* Upload modal */}
+          <UploadModal 
+            open={uploadOpen} 
+            onOpenChange={handleUploadClose} 
+            initialFiles={droppedFiles}
+          />
+        </div>
+      </DragDropZone>
     </AppLayout>
   );
 }

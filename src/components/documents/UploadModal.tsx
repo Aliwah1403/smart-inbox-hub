@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { Upload, Cloud, Mail, HardDrive, X, FileText, Check } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { Document } from '@/types';
@@ -21,6 +21,7 @@ import { cn } from '@/lib/utils';
 interface UploadModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  initialFiles?: File[];
 }
 
 interface FileUpload {
@@ -29,10 +30,17 @@ interface FileUpload {
   status: 'uploading' | 'completed' | 'error';
 }
 
-export function UploadModal({ open, onOpenChange }: UploadModalProps) {
+export function UploadModal({ open, onOpenChange, initialFiles }: UploadModalProps) {
   const { user, addDocuments } = useApp();
   const [files, setFiles] = useState<FileUpload[]>([]);
   const [isDragging, setIsDragging] = useState(false);
+  const processedFilesRef = useRef<File[]>([]);
+  const filesLengthRef = useRef(0);
+
+  // Keep ref in sync with files length for use in intervals
+  useEffect(() => {
+    filesLengthRef.current = files.length;
+  }, [files.length]);
 
   const simulateUpload = useCallback((newFiles: File[]) => {
     const uploads: FileUpload[] = newFiles.map(file => ({
@@ -41,53 +49,79 @@ export function UploadModal({ open, onOpenChange }: UploadModalProps) {
       status: 'uploading' as const,
     }));
 
-    setFiles(prev => [...prev, ...uploads]);
+    setFiles(prev => {
+      const startIndex = prev.length;
+      
+      // Simulate upload progress for each file
+      uploads.forEach((upload, index) => {
+        let progress = 0;
+        const fileIndex = startIndex + index;
 
-    // Simulate upload progress for each file
-    uploads.forEach((upload, index) => {
-      const startIndex = files.length + index;
-      let progress = 0;
+        const interval = setInterval(() => {
+          progress += Math.random() * 30;
+          if (progress >= 100) {
+            progress = 100;
+            clearInterval(interval);
+            
+            setFiles(prevFiles => prevFiles.map((f, i) => 
+              i === fileIndex 
+                ? { ...f, progress: 100, status: 'completed' as const }
+                : f
+            ));
 
-      const interval = setInterval(() => {
-        progress += Math.random() * 30;
-        if (progress >= 100) {
-          progress = 100;
-          clearInterval(interval);
-          
-          setFiles(prev => prev.map((f, i) => 
-            i === startIndex 
-              ? { ...f, progress: 100, status: 'completed' as const }
-              : f
-          ));
-
-          // Add to documents after "upload" completes
-          const newDoc: Document = {
-            id: `doc-${Date.now()}-${index}`,
-            filename: upload.file.name,
-            title: upload.file.name.replace(/\.[^/.]+$/, ''),
-            uploadDate: new Date(),
-            uploader: user?.name || 'Unknown',
-            uploaderId: user?.id || 'unknown',
-            source: 'manual_upload',
-            status: 'processing',
-            tags: [],
-            fileSize: upload.file.size,
-            fileType: upload.file.type,
-          };
-          
-          setTimeout(() => {
-            addDocuments([newDoc]);
-          }, 500);
-        } else {
-          setFiles(prev => prev.map((f, i) => 
-            i === startIndex 
-              ? { ...f, progress }
-              : f
-          ));
-        }
-      }, 200);
+            // Add to documents after "upload" completes
+            const newDoc: Document = {
+              id: `doc-${Date.now()}-${index}`,
+              filename: upload.file.name,
+              title: upload.file.name.replace(/\.[^/.]+$/, ''),
+              uploadDate: new Date(),
+              uploader: user?.name || 'Unknown',
+              uploaderId: user?.id || 'unknown',
+              source: 'manual_upload',
+              status: 'processing',
+              tags: [],
+              fileSize: upload.file.size,
+              fileType: upload.file.type,
+            };
+            
+            setTimeout(() => {
+              addDocuments([newDoc]);
+            }, 500);
+          } else {
+            setFiles(prevFiles => prevFiles.map((f, i) => 
+              i === fileIndex 
+                ? { ...f, progress }
+                : f
+            ));
+          }
+        }, 200);
+      });
+      
+      return [...prev, ...uploads];
     });
-  }, [files.length, user, addDocuments]);
+  }, [user, addDocuments]);
+
+  // Process initial files when modal opens with pre-dropped files
+  useEffect(() => {
+    if (open && initialFiles && initialFiles.length > 0) {
+      // Check if these files are new (not already processed)
+      const newFiles = initialFiles.filter(
+        file => !processedFilesRef.current.some(
+          pf => pf.name === file.name && pf.size === file.size
+        )
+      );
+      
+      if (newFiles.length > 0) {
+        processedFilesRef.current = [...processedFilesRef.current, ...newFiles];
+        simulateUpload(newFiles);
+      }
+    }
+    
+    // Reset processed files when modal closes
+    if (!open) {
+      processedFilesRef.current = [];
+    }
+  }, [open, initialFiles, simulateUpload]);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
