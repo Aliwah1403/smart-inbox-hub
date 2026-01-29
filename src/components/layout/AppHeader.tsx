@@ -1,4 +1,4 @@
-import { Bell, Search, LogOut, User, Shield } from 'lucide-react';
+import { Search, LogOut, User, Shield } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,6 +15,7 @@ import {
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { useNavigate } from 'react-router-dom';
+import { NotificationPopover } from '@/components/notifications/NotificationPopover';
 
 export function AppHeader() {
   const { user, logout } = useApp();
@@ -53,10 +54,7 @@ export function AppHeader() {
       <div className="flex items-center gap-2">
         <ThemeToggle />
         
-        <Button variant="ghost" size="icon" className="relative">
-          <Bell className="h-4 w-4" />
-          <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-primary" />
-        </Button>
+        <NotificationPopover />
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
