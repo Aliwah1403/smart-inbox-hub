@@ -13,6 +13,7 @@ interface AppContextType {
   addDocuments: (docs: Document[]) => void;
   updateDocument: (id: string, updates: Partial<Document>) => void;
   deleteDocuments: (ids: string[]) => void;
+  moveDocumentsToFolder: (documentIds: string[], folderId: string) => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -89,6 +90,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setDocuments(prev => prev.filter(doc => !ids.includes(doc.id)));
   };
 
+  const moveDocumentsToFolder = (documentIds: string[], folderId: string) => {
+    setDocuments(prev =>
+      prev.map(doc =>
+        documentIds.includes(doc.id)
+          ? { ...doc, folderId: folderId === 'all' ? undefined : folderId }
+          : doc
+      )
+    );
+  };
+
   return (
     <AppContext.Provider value={{
       user,
@@ -101,6 +112,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       addDocuments,
       updateDocument,
       deleteDocuments,
+      moveDocumentsToFolder,
     }}>
       {children}
     </AppContext.Provider>

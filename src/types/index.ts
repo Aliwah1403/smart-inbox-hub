@@ -23,6 +23,7 @@ export interface Document {
   status: DocumentStatus;
   tags: string[];
   category?: string;
+  folderId?: string;
   fileSize: number;
   fileType: string;
   aiSummary?: string;

@@ -47,13 +47,18 @@ export default function Documents() {
   const isAdmin = user?.role === 'admin';
   const currentFolder = folders.find(f => f.id === selectedFolderId);
 
-  // Filter documents based on role and filters
+  // Filter documents based on role, folder, and filters
   const filteredDocuments = useMemo(() => {
     let docs = documents;
 
     // Staff can only see their own documents
     if (!isAdmin && user) {
       docs = docs.filter(d => d.uploaderId === user.id);
+    }
+
+    // Filter by selected folder
+    if (selectedFolderId && selectedFolderId !== 'all') {
+      docs = docs.filter(d => d.folderId === selectedFolderId);
     }
 
     // Apply search filter
@@ -91,7 +96,7 @@ export default function Documents() {
     }
 
     return docs;
-  }, [documents, filters, isAdmin, user]);
+  }, [documents, filters, isAdmin, user, selectedFolderId]);
 
   // Paginate
   const paginatedDocuments = useMemo(() => {
