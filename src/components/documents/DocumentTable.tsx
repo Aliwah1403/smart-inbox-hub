@@ -1,5 +1,5 @@
 import { format } from 'date-fns';
-import { FileText, MoreHorizontal, Eye, Edit, Trash2, Share2 } from 'lucide-react';
+import { FileText, MoreHorizontal, Eye, Edit, Trash2, Share2, GripVertical } from 'lucide-react';
 import { Document, DocumentSource, DocumentStatus } from '@/types';
 import { useApp } from '@/context/AppContext';
 import {
@@ -138,6 +138,16 @@ export function DocumentTable({
     );
   }
 
+  const handleDragStart = (e: React.DragEvent, doc: Document) => {
+    // If the dragged document is selected, drag all selected; otherwise just this one
+    const idsToMove = selectedIds.includes(doc.id) && selectedIds.length > 1
+      ? selectedIds
+      : [doc.id];
+    
+    e.dataTransfer.setData('application/json', JSON.stringify({ documentIds: idsToMove }));
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
   return (
     <div className="rounded-lg border border-border">
       <Table>
@@ -151,6 +161,7 @@ export function DocumentTable({
                 />
               </TableHead>
             )}
+            <TableHead className="w-8" />
             <TableHead>Document</TableHead>
             <TableHead>Source</TableHead>
             <TableHead>Status</TableHead>
@@ -163,6 +174,8 @@ export function DocumentTable({
           {documents.map((doc) => (
             <TableRow 
               key={doc.id}
+              draggable
+              onDragStart={(e) => handleDragStart(e, doc)}
               className={cn(
                 "cursor-pointer transition-colors hover:bg-muted/50",
                 selectedIds.includes(doc.id) && "bg-muted/30"
@@ -177,6 +190,9 @@ export function DocumentTable({
                   />
                 </TableCell>
               )}
+              <TableCell className="w-8 cursor-grab" onClick={(e) => e.stopPropagation()}>
+                <GripVertical className="h-4 w-4 text-muted-foreground" />
+              </TableCell>
               <TableCell>
                 <div className="flex items-center gap-3">
                   <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted">

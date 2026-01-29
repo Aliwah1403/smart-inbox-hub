@@ -8,6 +8,7 @@ import { useState } from 'react';
 import { useApp } from '@/context/AppContext';
 import { useFolders, Folder as FolderType } from '@/context/FolderContext';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 import {
   Sidebar,
   SidebarContent,
@@ -64,7 +65,7 @@ const adminItems = [
 ];
 
 export function AppSidebar() {
-  const { user } = useApp();
+  const { user, moveDocumentsToFolder } = useApp();
   const { state } = useSidebar();
   const location = useLocation();
   const { folders, selectedFolderId, setSelectedFolderId, addFolder, renameFolder, deleteFolder } = useFolders();
@@ -75,6 +76,7 @@ export function AppSidebar() {
   const [newFolderDialog, setNewFolderDialog] = useState(false);
   const [editFolderDialog, setEditFolderDialog] = useState<FolderType | null>(null);
   const [folderName, setFolderName] = useState('');
+  const [dragOverFolderId, setDragOverFolderId] = useState<string | null>(null);
 
   const handleAddFolder = () => {
     if (folderName.trim()) {
@@ -89,6 +91,32 @@ export function AppSidebar() {
       renameFolder(editFolderDialog.id, folderName.trim());
       setFolderName('');
       setEditFolderDialog(null);
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent, folderId: string) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    setDragOverFolderId(folderId);
+  };
+
+  const handleDragLeave = () => {
+    setDragOverFolderId(null);
+  };
+
+  const handleDrop = (e: React.DragEvent, folderId: string) => {
+    e.preventDefault();
+    setDragOverFolderId(null);
+
+    try {
+      const data = JSON.parse(e.dataTransfer.getData('application/json'));
+      if (data.documentIds && Array.isArray(data.documentIds)) {
+        moveDocumentsToFolder(data.documentIds, folderId);
+        const folder = folders.find(f => f.id === folderId);
+        toast.success(`Moved ${data.documentIds.length} document(s) to ${folder?.name || 'folder'}`);
+      }
+    } catch {
+      // Ignore non-document drops
     }
   };
 
@@ -160,7 +188,13 @@ export function AppSidebar() {
                           <SidebarMenuButton
                             isActive={selectedFolderId === folder.id}
                             onClick={() => setSelectedFolderId(folder.id)}
+                            onDragOver={(e) => handleDragOver(e, folder.id)}
+                            onDragLeave={handleDragLeave}
+                            onDrop={(e) => handleDrop(e, folder.id)}
                             tooltip={folder.name}
+                            className={cn(
+                              dragOverFolderId === folder.id && "ring-2 ring-primary bg-primary/10"
+                            )}
                           >
                             <Icon className="h-4 w-4" />
                             <span className="flex-1">{folder.name}</span>
