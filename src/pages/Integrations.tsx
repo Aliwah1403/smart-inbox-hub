@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Mail, Printer, Cloud, Link2, CheckCircle, XCircle, Info } from 'lucide-react';
 import { mockIntegrations } from '@/data/mockData';
 import { AppLayout } from '@/components/layout/AppLayout';
@@ -12,9 +13,9 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
+import { WhatsAppIntegration } from '@/components/integrations/WhatsAppIntegration';
 
 const iconMap: Record<string, typeof Mail> = {
   Mail,
@@ -23,6 +24,8 @@ const iconMap: Record<string, typeof Mail> = {
 };
 
 export default function Integrations() {
+  const [whatsappConnected, setWhatsappConnected] = useState(false);
+
   return (
     <AppLayout>
       <div className="space-y-6">
@@ -64,6 +67,12 @@ export default function Integrations() {
 
         {/* Integration cards */}
         <div className="grid gap-4 md:grid-cols-2">
+          {/* WhatsApp Integration */}
+          <WhatsAppIntegration 
+            isConnected={whatsappConnected}
+            onConnect={() => setWhatsappConnected(true)}
+          />
+
           {mockIntegrations.filter(i => i.id !== 'scan-to-email').map((integration) => {
             const Icon = iconMap[integration.icon] || Link2;
             const isConnected = integration.status === 'connected';

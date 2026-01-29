@@ -35,6 +35,7 @@ const sourceLabels: Record<DocumentSource, string> = {
   scan_to_email: 'Scan-to-Email',
   gmail: 'Gmail',
   outlook: 'Outlook',
+  whatsapp: 'WhatsApp',
 };
 
 const statusLabels: Record<DocumentStatus, string> = {

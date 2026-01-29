@@ -38,6 +38,7 @@ const sourceLabels: Record<DocumentSource, string> = {
   scan_to_email: 'Scan',
   gmail: 'Gmail',
   outlook: 'Outlook',
+  whatsapp: 'WhatsApp',
 };
 
 const sourceColors: Record<DocumentSource, string> = {
@@ -45,6 +46,7 @@ const sourceColors: Record<DocumentSource, string> = {
   scan_to_email: 'bg-primary/10 text-primary',
   gmail: 'bg-destructive/10 text-destructive',
   outlook: 'bg-primary/10 text-primary',
+  whatsapp: 'bg-success/10 text-success',
 };
 
 const statusColors: Record<DocumentStatus, string> = {
