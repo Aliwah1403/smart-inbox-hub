@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Search, LayoutGrid, List, Clock, ArrowUpDown } from 'lucide-react';
+import { Plus, Search, LayoutGrid, List, ArrowUpDown, Star, Trash2, Folder } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { useFolders, FolderColor } from '@/context/FolderContext';
 import { useApp } from '@/context/AppContext';
@@ -10,6 +10,7 @@ import { StorageOverview } from '@/components/folders/StorageOverview';
 import { RecentActivity } from '@/components/folders/RecentActivity';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Dialog,
   DialogContent,
@@ -28,6 +29,7 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 
 type SortOption = 'name' | 'date' | 'count';
 type ViewMode = 'grid' | 'list';
+type TabValue = 'all' | 'starred' | 'trash';
 
 const colorOptions: { value: FolderColor; label: string }[] = [
   { value: 'blue', label: 'Blue' },
@@ -40,14 +42,29 @@ const colorOptions: { value: FolderColor; label: string }[] = [
   { value: 'teal', label: 'Teal' },
 ];
 
+function getFolderColorValue(color: FolderColor): string {
+  const colors: Record<FolderColor, string> = {
+    blue: '#60A5FA',
+    pink: '#F472B6',
+    yellow: '#FBBF24',
+    red: '#F87171',
+    green: '#4ADE80',
+    purple: '#A78BFA',
+    orange: '#FB923C',
+    teal: '#2DD4BF',
+  };
+  return colors[color];
+}
+
 export default function Folders() {
   const navigate = useNavigate();
-  const { folders, addFolder, setSelectedFolderId } = useFolders();
-  const { documents } = useApp();
+  const { folders, trashedFolders, setSelectedFolderId, addFolder } = useFolders();
+  const { documents, starredDocuments } = useApp();
   
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<SortOption>('name');
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
+  const [activeTab, setActiveTab] = useState<TabValue>('all');
   const [newFolderDialog, setNewFolderDialog] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
   const [newFolderColor, setNewFolderColor] = useState<FolderColor>('blue');
@@ -63,8 +80,23 @@ export default function Folders() {
     return { ...folder, documentCount: count };
   });
 
+  const trashedFoldersWithCounts = trashedFolders.map(folder => ({
+    ...folder,
+    documentCount: documents.filter(doc => doc.folderId === folder.id).length,
+  }));
+
+  // Get starred folders (folders with isQuickAccess)
+  const starredFolders = foldersWithCounts.filter(f => f.isQuickAccess);
+
+  // Determine which folders to show based on active tab
+  const displayFolders = activeTab === 'all' 
+    ? foldersWithCounts 
+    : activeTab === 'starred' 
+      ? starredFolders 
+      : trashedFoldersWithCounts;
+
   // Filter and sort folders
-  const filteredFolders = foldersWithCounts
+  const filteredFolders = displayFolders
     .filter(folder => 
       folder.name.toLowerCase().includes(searchQuery.toLowerCase())
     )
@@ -82,6 +114,7 @@ export default function Folders() {
     });
 
   const handleFolderClick = (folderId: string) => {
+    if (activeTab === 'trash') return; // Don't navigate for trashed folders
     setSelectedFolderId(folderId);
     navigate('/documents');
   };
@@ -113,6 +146,24 @@ export default function Folders() {
               New Folder
             </Button>
           </div>
+
+          {/* Tabs */}
+          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as TabValue)}>
+            <TabsList>
+              <TabsTrigger value="all" className="gap-2">
+                <Folder className="h-4 w-4" />
+                All Folders
+              </TabsTrigger>
+              <TabsTrigger value="starred" className="gap-2">
+                <Star className="h-4 w-4" />
+                Starred
+              </TabsTrigger>
+              <TabsTrigger value="trash" className="gap-2">
+                <Trash2 className="h-4 w-4" />
+                Trash
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
 
           {/* Search and Controls */}
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -152,24 +203,50 @@ export default function Folders() {
             </div>
           </div>
 
+          {/* Empty States */}
+          {filteredFolders.length === 0 && activeTab === 'starred' && (
+            <div className="flex flex-col items-center justify-center py-16 text-center">
+              <Star className="h-12 w-12 text-muted-foreground mb-4" />
+              <h3 className="text-lg font-medium mb-1">No starred folders</h3>
+              <p className="text-sm text-muted-foreground">
+                Right-click on a folder to add it to Quick Access
+              </p>
+            </div>
+          )}
+
+          {filteredFolders.length === 0 && activeTab === 'trash' && (
+            <div className="flex flex-col items-center justify-center py-16 text-center">
+              <Trash2 className="h-12 w-12 text-muted-foreground mb-4" />
+              <h3 className="text-lg font-medium mb-1">Trash is empty</h3>
+              <p className="text-sm text-muted-foreground">
+                Deleted folders will appear here
+              </p>
+            </div>
+          )}
+
           {/* Folders Grid/List */}
-          <div className={viewMode === 'grid' 
-            ? "grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4"
-            : "space-y-2"
-          }>
-            <NewFolderCard 
-              onClick={() => setNewFolderDialog(true)} 
-              viewMode={viewMode}
-            />
-            {filteredFolders.map((folder) => (
-              <FolderCard
-                key={folder.id}
-                folder={folder}
-                viewMode={viewMode}
-                onClick={() => handleFolderClick(folder.id)}
-              />
-            ))}
-          </div>
+          {(filteredFolders.length > 0 || activeTab === 'all') && (
+            <div className={viewMode === 'grid' 
+              ? "grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4"
+              : "space-y-2"
+            }>
+              {activeTab === 'all' && (
+                <NewFolderCard 
+                  onClick={() => setNewFolderDialog(true)} 
+                  viewMode={viewMode}
+                />
+              )}
+              {filteredFolders.map((folder) => (
+                <FolderCard
+                  key={folder.id}
+                  folder={folder}
+                  viewMode={viewMode}
+                  onClick={() => handleFolderClick(folder.id)}
+                  isTrashed={activeTab === 'trash'}
+                />
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Right Sidebar */}
@@ -221,18 +298,4 @@ export default function Folders() {
       </Dialog>
     </AppLayout>
   );
-}
-
-function getFolderColorValue(color: FolderColor): string {
-  const colors: Record<FolderColor, string> = {
-    blue: '#60A5FA',
-    pink: '#F472B6',
-    yellow: '#FBBF24',
-    red: '#F87171',
-    green: '#4ADE80',
-    purple: '#A78BFA',
-    orange: '#FB923C',
-    teal: '#2DD4BF',
-  };
-  return colors[color];
 }

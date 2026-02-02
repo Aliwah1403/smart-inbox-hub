@@ -1,7 +1,7 @@
 import { 
   FileText, Settings, Link2, LayoutDashboard, 
   FolderPlus, MoreHorizontal, Pencil, Trash2,
-  Receipt, FileCheck, BarChart3, Folder, ChevronRight
+  Receipt, FileCheck, BarChart3, Folder, ChevronRight, Pin
 } from 'lucide-react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { useState } from 'react';
@@ -66,10 +66,11 @@ const adminItems = [
 ];
 
 export function AppSidebar() {
-  const { user, moveDocumentsToFolder } = useApp();
+  const { documents, moveDocumentsToFolder } = useApp();
+  const { user } = useApp();
   const { state } = useSidebar();
   const location = useLocation();
-  const { folders, selectedFolderId, setSelectedFolderId, addFolder, renameFolder, deleteFolder } = useFolders();
+  const { quickAccessFolders, folders, selectedFolderId, setSelectedFolderId, addFolder, renameFolder, deleteFolder, toggleQuickAccess } = useFolders();
   const isAdmin = user?.role === 'admin';
   const isCollapsed = state === 'collapsed';
 
@@ -78,6 +79,17 @@ export function AppSidebar() {
   const [editFolderDialog, setEditFolderDialog] = useState<FolderType | null>(null);
   const [folderName, setFolderName] = useState('');
   const [dragOverFolderId, setDragOverFolderId] = useState<string | null>(null);
+
+  // Calculate document counts for quick access folders
+  const quickAccessWithCounts = quickAccessFolders.map(folder => {
+    let count = 0;
+    if (folder.id === 'all') {
+      count = documents.length;
+    } else {
+      count = documents.filter(doc => doc.folderId === folder.id).length;
+    }
+    return { ...folder, documentCount: count };
+  });
 
   const handleAddFolder = () => {
     if (folderName.trim()) {
@@ -113,7 +125,7 @@ export function AppSidebar() {
       const data = JSON.parse(e.dataTransfer.getData('application/json'));
       if (data.documentIds && Array.isArray(data.documentIds)) {
         moveDocumentsToFolder(data.documentIds, folderId);
-        const folder = folders.find(f => f.id === folderId);
+        const folder = quickAccessFolders.find(f => f.id === folderId);
         toast.success(`Moved ${data.documentIds.length} document(s) to ${folder?.name || 'folder'}`);
       }
     } catch {
@@ -124,6 +136,11 @@ export function AppSidebar() {
   const getFolderIcon = (iconName: string) => {
     const Icon = iconMap[iconName] || Folder;
     return Icon;
+  };
+
+  const handleRemoveFromQuickAccess = (folderId: string) => {
+    toggleQuickAccess(folderId);
+    toast.success('Removed from Quick Access');
   };
 
   return (
@@ -164,7 +181,7 @@ export function AppSidebar() {
 
           <SidebarSeparator />
 
-          {/* Folders */}
+          {/* Quick Access Folders */}
           <Collapsible open={foldersOpen} onOpenChange={setFoldersOpen}>
             <SidebarGroup>
               <SidebarGroupLabel asChild>
@@ -173,7 +190,8 @@ export function AppSidebar() {
                     "h-4 w-4 transition-transform",
                     foldersOpen && "rotate-90"
                   )} />
-                  <span className="ml-1">Folders</span>
+                  <Pin className="ml-1 h-3 w-3" />
+                  <span className="ml-1">Quick Access</span>
                 </CollapsibleTrigger>
               </SidebarGroupLabel>
               <SidebarGroupAction onClick={() => { setFolderName(''); setNewFolderDialog(true); }}>
@@ -182,57 +200,69 @@ export function AppSidebar() {
               <CollapsibleContent>
                 <SidebarGroupContent>
                   <SidebarMenu>
-                    {folders.map((folder) => {
-                      const Icon = getFolderIcon(folder.icon);
-                      return (
-                        <SidebarMenuItem key={folder.id}>
-                          <SidebarMenuButton
-                            isActive={selectedFolderId === folder.id}
-                            onClick={() => setSelectedFolderId(folder.id)}
-                            onDragOver={(e) => handleDragOver(e, folder.id)}
-                            onDragLeave={handleDragLeave}
-                            onDrop={(e) => handleDrop(e, folder.id)}
-                            tooltip={folder.name}
-                            className={cn(
-                              dragOverFolderId === folder.id && "ring-2 ring-primary bg-primary/10"
+                    {quickAccessWithCounts.length === 0 ? (
+                      <SidebarMenuItem>
+                        <div className="px-3 py-2 text-xs text-muted-foreground">
+                          Right-click folders to add to Quick Access
+                        </div>
+                      </SidebarMenuItem>
+                    ) : (
+                      quickAccessWithCounts.map((folder) => {
+                        const Icon = getFolderIcon(folder.icon);
+                        return (
+                          <SidebarMenuItem key={folder.id}>
+                            <SidebarMenuButton
+                              isActive={selectedFolderId === folder.id}
+                              onClick={() => setSelectedFolderId(folder.id)}
+                              onDragOver={(e) => handleDragOver(e, folder.id)}
+                              onDragLeave={handleDragLeave}
+                              onDrop={(e) => handleDrop(e, folder.id)}
+                              tooltip={folder.name}
+                              className={cn(
+                                dragOverFolderId === folder.id && "ring-2 ring-primary bg-primary/10"
+                              )}
+                            >
+                              <Icon className="h-4 w-4" />
+                              <span className="flex-1">{folder.name}</span>
+                              {!isCollapsed && (
+                                <span className="text-xs text-muted-foreground">
+                                  {folder.documentCount}
+                                </span>
+                              )}
+                            </SidebarMenuButton>
+                            {!folder.isSystem && (
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <SidebarMenuAction>
+                                    <MoreHorizontal className="h-4 w-4" />
+                                  </SidebarMenuAction>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent side="right" align="start">
+                                  <DropdownMenuItem onClick={() => {
+                                    setFolderName(folder.name);
+                                    setEditFolderDialog(folder);
+                                  }}>
+                                    <Pencil className="mr-2 h-4 w-4" />
+                                    Rename
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => handleRemoveFromQuickAccess(folder.id)}>
+                                    <Pin className="mr-2 h-4 w-4" />
+                                    Remove from Quick Access
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem 
+                                    className="text-destructive"
+                                    onClick={() => deleteFolder(folder.id)}
+                                  >
+                                    <Trash2 className="mr-2 h-4 w-4" />
+                                    Move to Trash
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
                             )}
-                          >
-                            <Icon className="h-4 w-4" />
-                            <span className="flex-1">{folder.name}</span>
-                            {!isCollapsed && (
-                              <span className="text-xs text-muted-foreground">
-                                {folder.documentCount}
-                              </span>
-                            )}
-                          </SidebarMenuButton>
-                          {!folder.isSystem && (
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <SidebarMenuAction>
-                                  <MoreHorizontal className="h-4 w-4" />
-                                </SidebarMenuAction>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent side="right" align="start">
-                                <DropdownMenuItem onClick={() => {
-                                  setFolderName(folder.name);
-                                  setEditFolderDialog(folder);
-                                }}>
-                                  <Pencil className="mr-2 h-4 w-4" />
-                                  Rename
-                                </DropdownMenuItem>
-                                <DropdownMenuItem 
-                                  className="text-destructive"
-                                  onClick={() => deleteFolder(folder.id)}
-                                >
-                                  <Trash2 className="mr-2 h-4 w-4" />
-                                  Delete
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          )}
-                        </SidebarMenuItem>
-                      );
-                    })}
+                          </SidebarMenuItem>
+                        );
+                      })
+                    )}
                   </SidebarMenu>
                 </SidebarGroupContent>
               </CollapsibleContent>

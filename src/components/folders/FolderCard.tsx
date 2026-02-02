@@ -1,7 +1,15 @@
-import { MoreHorizontal, Pencil, Trash2, Palette } from 'lucide-react';
+import { MoreHorizontal, Pencil, Trash2, Palette, Pin, PinOff, RotateCcw, Trash } from 'lucide-react';
 import { useState } from 'react';
 import { Folder, FolderColor, useFolders } from '@/context/FolderContext';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuSeparator,
+  ContextMenuTrigger,
+} from '@/components/ui/context-menu';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -23,6 +31,7 @@ interface FolderCardProps {
   folder: Folder & { documentCount: number };
   viewMode: 'grid' | 'list';
   onClick: () => void;
+  isTrashed?: boolean;
 }
 
 const folderColors: Record<FolderColor, { bg: string; icon: string; border: string }> = {
@@ -47,8 +56,8 @@ const colorHexValues: Record<FolderColor, string> = {
   teal: '#2DD4BF',
 };
 
-export function FolderCard({ folder, viewMode, onClick }: FolderCardProps) {
-  const { renameFolder, updateFolderColor, deleteFolder } = useFolders();
+export function FolderCard({ folder, viewMode, onClick, isTrashed = false }: FolderCardProps) {
+  const { renameFolder, updateFolderColor, deleteFolder, toggleQuickAccess, restoreFolder, permanentlyDeleteFolder } = useFolders();
   const [editDialog, setEditDialog] = useState(false);
   const [colorDialog, setColorDialog] = useState(false);
   const [editName, setEditName] = useState(folder.name);
@@ -67,39 +76,107 @@ export function FolderCard({ folder, viewMode, onClick }: FolderCardProps) {
     setColorDialog(false);
   };
 
+  const handleToggleQuickAccess = () => {
+    toggleQuickAccess(folder.id);
+    toast.success(folder.isQuickAccess ? 'Removed from Quick Access' : 'Added to Quick Access');
+  };
+
+  const handleRestore = () => {
+    restoreFolder(folder.id);
+    toast.success('Folder restored');
+  };
+
+  const handlePermanentDelete = () => {
+    permanentlyDeleteFolder(folder.id);
+    toast.success('Folder permanently deleted');
+  };
+
   const stopPropagation = (e: React.MouseEvent) => {
     e.stopPropagation();
   };
 
-  if (viewMode === 'list') {
+  const cardContent = viewMode === 'list' ? (
+    <div
+      onClick={onClick}
+      className={cn(
+        "flex items-center gap-4 p-3 rounded-lg border cursor-pointer transition-all hover:shadow-md",
+        colors.bg,
+        colors.border
+      )}
+    >
+      <FolderIcon color={folder.color} size="sm" />
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2">
+          <p className="font-medium truncate">{folder.name}</p>
+          {folder.isQuickAccess && <Pin className="h-3 w-3 text-muted-foreground" />}
+        </div>
+        <p className="text-sm text-muted-foreground">
+          {folder.documentCount} {folder.documentCount === 1 ? 'file' : 'files'}
+        </p>
+      </div>
+      {!folder.isSystem && (
+        <div onClick={stopPropagation}>
+          <FolderActions
+            folder={folder}
+            onRename={() => { setEditName(folder.name); setEditDialog(true); }}
+            onColor={() => setColorDialog(true)}
+            onDelete={() => deleteFolder(folder.id)}
+            onToggleQuickAccess={handleToggleQuickAccess}
+            isTrashed={isTrashed}
+            onRestore={handleRestore}
+            onPermanentDelete={handlePermanentDelete}
+          />
+        </div>
+      )}
+    </div>
+  ) : (
+    <div
+      onClick={onClick}
+      className={cn(
+        "group relative p-4 rounded-xl border cursor-pointer transition-all hover:shadow-lg hover:-translate-y-1",
+        colors.bg,
+        colors.border
+      )}
+    >
+      {folder.isQuickAccess && (
+        <div className="absolute top-2 left-2">
+          <Pin className="h-4 w-4 text-muted-foreground" />
+        </div>
+      )}
+      {!folder.isSystem && (
+        <div 
+          className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
+          onClick={stopPropagation}
+        >
+          <FolderActions
+            folder={folder}
+            onRename={() => { setEditName(folder.name); setEditDialog(true); }}
+            onColor={() => setColorDialog(true)}
+            onDelete={() => deleteFolder(folder.id)}
+            onToggleQuickAccess={handleToggleQuickAccess}
+            isTrashed={isTrashed}
+            onRestore={handleRestore}
+            onPermanentDelete={handlePermanentDelete}
+          />
+        </div>
+      )}
+      
+      <div className="flex flex-col items-center text-center space-y-3">
+        <FolderIcon color={folder.color} size="lg" />
+        <div className="space-y-1">
+          <p className="font-medium truncate max-w-full">{folder.name}</p>
+          <p className="text-xs text-muted-foreground">
+            {folder.documentCount} {folder.documentCount === 1 ? 'file' : 'files'}
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+
+  if (isTrashed) {
     return (
       <>
-        <div
-          onClick={onClick}
-          className={cn(
-            "flex items-center gap-4 p-3 rounded-lg border cursor-pointer transition-all hover:shadow-md",
-            colors.bg,
-            colors.border
-          )}
-        >
-          <FolderIcon color={folder.color} size="sm" />
-          <div className="flex-1 min-w-0">
-            <p className="font-medium truncate">{folder.name}</p>
-            <p className="text-sm text-muted-foreground">
-              {folder.documentCount} {folder.documentCount === 1 ? 'file' : 'files'}
-            </p>
-          </div>
-          {!folder.isSystem && (
-            <div onClick={stopPropagation}>
-              <FolderActions
-                folder={folder}
-                onRename={() => { setEditName(folder.name); setEditDialog(true); }}
-                onColor={() => setColorDialog(true)}
-                onDelete={() => deleteFolder(folder.id)}
-              />
-            </div>
-          )}
-        </div>
+        {cardContent}
         <RenameDialog
           open={editDialog}
           onOpenChange={setEditDialog}
@@ -119,38 +196,44 @@ export function FolderCard({ folder, viewMode, onClick }: FolderCardProps) {
 
   return (
     <>
-      <div
-        onClick={onClick}
-        className={cn(
-          "group relative p-4 rounded-xl border cursor-pointer transition-all hover:shadow-lg hover:-translate-y-1",
-          colors.bg,
-          colors.border
-        )}
-      >
-        {!folder.isSystem && (
-          <div 
-            className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
-            onClick={stopPropagation}
-          >
-            <FolderActions
-              folder={folder}
-              onRename={() => { setEditName(folder.name); setEditDialog(true); }}
-              onColor={() => setColorDialog(true)}
-              onDelete={() => deleteFolder(folder.id)}
-            />
-          </div>
-        )}
-        
-        <div className="flex flex-col items-center text-center space-y-3">
-          <FolderIcon color={folder.color} size="lg" />
-          <div className="space-y-1">
-            <p className="font-medium truncate max-w-full">{folder.name}</p>
-            <p className="text-xs text-muted-foreground">
-              {folder.documentCount} {folder.documentCount === 1 ? 'file' : 'files'}
-            </p>
-          </div>
-        </div>
-      </div>
+      <ContextMenu>
+        <ContextMenuTrigger>
+          {cardContent}
+        </ContextMenuTrigger>
+        <ContextMenuContent className="w-48">
+          <ContextMenuItem onClick={handleToggleQuickAccess}>
+            {folder.isQuickAccess ? (
+              <>
+                <PinOff className="mr-2 h-4 w-4" />
+                Remove from Quick Access
+              </>
+            ) : (
+              <>
+                <Pin className="mr-2 h-4 w-4" />
+                Add to Quick Access
+              </>
+            )}
+          </ContextMenuItem>
+          {!folder.isSystem && (
+            <>
+              <ContextMenuSeparator />
+              <ContextMenuItem onClick={() => { setEditName(folder.name); setEditDialog(true); }}>
+                <Pencil className="mr-2 h-4 w-4" />
+                Rename
+              </ContextMenuItem>
+              <ContextMenuItem onClick={() => setColorDialog(true)}>
+                <Palette className="mr-2 h-4 w-4" />
+                Change Color
+              </ContextMenuItem>
+              <ContextMenuSeparator />
+              <ContextMenuItem className="text-destructive" onClick={() => deleteFolder(folder.id)}>
+                <Trash2 className="mr-2 h-4 w-4" />
+                Move to Trash
+              </ContextMenuItem>
+            </>
+          )}
+        </ContextMenuContent>
+      </ContextMenu>
       <RenameDialog
         open={editDialog}
         onOpenChange={setEditDialog}
@@ -203,13 +286,44 @@ function FolderActions({
   folder, 
   onRename, 
   onColor, 
-  onDelete 
+  onDelete,
+  onToggleQuickAccess,
+  isTrashed,
+  onRestore,
+  onPermanentDelete,
 }: { 
   folder: Folder;
   onRename: () => void;
   onColor: () => void;
   onDelete: () => void;
+  onToggleQuickAccess: () => void;
+  isTrashed?: boolean;
+  onRestore: () => void;
+  onPermanentDelete: () => void;
 }) {
+  if (isTrashed) {
+    return (
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" size="icon" className="h-8 w-8">
+            <MoreHorizontal className="h-4 w-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem onClick={onRestore}>
+            <RotateCcw className="mr-2 h-4 w-4" />
+            Restore
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem className="text-destructive" onClick={onPermanentDelete}>
+            <Trash className="mr-2 h-4 w-4" />
+            Delete Permanently
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    );
+  }
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -218,6 +332,20 @@ function FolderActions({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
+        <DropdownMenuItem onClick={onToggleQuickAccess}>
+          {folder.isQuickAccess ? (
+            <>
+              <PinOff className="mr-2 h-4 w-4" />
+              Remove from Quick Access
+            </>
+          ) : (
+            <>
+              <Pin className="mr-2 h-4 w-4" />
+              Add to Quick Access
+            </>
+          )}
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
         <DropdownMenuItem onClick={onRename}>
           <Pencil className="mr-2 h-4 w-4" />
           Rename
@@ -229,7 +357,7 @@ function FolderActions({
         <DropdownMenuSeparator />
         <DropdownMenuItem className="text-destructive" onClick={onDelete}>
           <Trash2 className="mr-2 h-4 w-4" />
-          Delete
+          Move to Trash
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

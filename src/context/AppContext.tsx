@@ -6,6 +6,8 @@ interface AppContextType {
   user: User | null;
   isAuthenticated: boolean;
   documents: Document[];
+  starredDocuments: Document[];
+  trashedDocuments: Document[];
   login: (email: string, password: string) => Promise<boolean>;
   signup: (email: string, password: string, name: string) => Promise<boolean>;
   logout: () => void;
@@ -14,6 +16,10 @@ interface AppContextType {
   updateDocument: (id: string, updates: Partial<Document>) => void;
   deleteDocuments: (ids: string[]) => void;
   moveDocumentsToFolder: (documentIds: string[], folderId: string) => void;
+  toggleStarDocument: (id: string) => void;
+  trashDocuments: (ids: string[]) => void;
+  restoreDocuments: (ids: string[]) => void;
+  permanentlyDeleteDocuments: (ids: string[]) => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -100,11 +106,45 @@ export function AppProvider({ children }: { children: ReactNode }) {
     );
   };
 
+  const toggleStarDocument = (id: string) => {
+    setDocuments(prev =>
+      prev.map(doc =>
+        doc.id === id ? { ...doc, isStarred: !doc.isStarred } : doc
+      )
+    );
+  };
+
+  const trashDocuments = (ids: string[]) => {
+    setDocuments(prev =>
+      prev.map(doc =>
+        ids.includes(doc.id) ? { ...doc, isTrashed: true, isStarred: false } : doc
+      )
+    );
+  };
+
+  const restoreDocuments = (ids: string[]) => {
+    setDocuments(prev =>
+      prev.map(doc =>
+        ids.includes(doc.id) ? { ...doc, isTrashed: false } : doc
+      )
+    );
+  };
+
+  const permanentlyDeleteDocuments = (ids: string[]) => {
+    setDocuments(prev => prev.filter(doc => !ids.includes(doc.id)));
+  };
+
+  const activeDocuments = documents.filter(doc => !doc.isTrashed);
+  const starredDocuments = documents.filter(doc => doc.isStarred && !doc.isTrashed);
+  const trashedDocuments = documents.filter(doc => doc.isTrashed);
+
   return (
     <AppContext.Provider value={{
       user,
       isAuthenticated: !!user,
-      documents,
+      documents: activeDocuments,
+      starredDocuments,
+      trashedDocuments,
       login,
       signup,
       logout,
@@ -113,6 +153,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       updateDocument,
       deleteDocuments,
       moveDocumentsToFolder,
+      toggleStarDocument,
+      trashDocuments,
+      restoreDocuments,
+      permanentlyDeleteDocuments,
     }}>
       {children}
     </AppContext.Provider>
