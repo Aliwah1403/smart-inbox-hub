@@ -31,6 +31,8 @@ export interface Document {
   aiSummary?: string;
   extractedFields?: Record<string, string>;
   previewUrl?: string;
+  isStarred?: boolean;
+  isTrashed?: boolean;
 }
 
 export interface Integration {

@@ -10,20 +10,27 @@ export interface Folder {
   isSystem: boolean;
   documentCount: number;
   createdAt: Date;
+  isQuickAccess?: boolean;
+  isTrashed?: boolean;
 }
 
 interface FolderContextType {
   folders: Folder[];
+  trashedFolders: Folder[];
+  quickAccessFolders: Folder[];
   selectedFolderId: string | null;
   setSelectedFolderId: (id: string | null) => void;
   addFolder: (name: string, color?: FolderColor) => void;
   renameFolder: (id: string, name: string) => void;
   updateFolderColor: (id: string, color: FolderColor) => void;
   deleteFolder: (id: string) => void;
+  restoreFolder: (id: string) => void;
+  permanentlyDeleteFolder: (id: string) => void;
+  toggleQuickAccess: (id: string) => void;
 }
 
 const defaultFolders: Folder[] = [
-  { id: 'all', name: 'All Documents', icon: 'FileText', color: 'blue', isSystem: true, documentCount: 0, createdAt: new Date('2024-01-01') },
+  { id: 'all', name: 'All Documents', icon: 'FileText', color: 'blue', isSystem: true, documentCount: 0, createdAt: new Date('2024-01-01'), isQuickAccess: true },
   { id: 'invoices', name: 'Invoices', icon: 'Receipt', color: 'green', isSystem: true, documentCount: 12, createdAt: new Date('2024-01-01') },
   { id: 'contracts', name: 'Contracts', icon: 'FileCheck', color: 'purple', isSystem: true, documentCount: 8, createdAt: new Date('2024-01-01') },
   { id: 'reports', name: 'Reports', icon: 'BarChart3', color: 'orange', isSystem: true, documentCount: 15, createdAt: new Date('2024-01-01') },
@@ -37,11 +44,12 @@ export function FolderProvider({ children }: { children: ReactNode }) {
     const stored = localStorage.getItem('docbox_folders');
     if (stored) {
       const parsed = JSON.parse(stored);
-      // Migrate old folders to include color and createdAt
       return parsed.map((f: Folder) => ({
         ...f,
         color: f.color || 'blue',
         createdAt: f.createdAt ? new Date(f.createdAt) : new Date(),
+        isQuickAccess: f.isQuickAccess ?? false,
+        isTrashed: f.isTrashed ?? false,
       }));
     }
     return defaultFolders;
@@ -53,6 +61,10 @@ export function FolderProvider({ children }: { children: ReactNode }) {
     localStorage.setItem('docbox_folders', JSON.stringify(newFolders));
   };
 
+  const activeFolders = folders.filter(f => !f.isTrashed);
+  const trashedFolders = folders.filter(f => f.isTrashed);
+  const quickAccessFolders = folders.filter(f => f.isQuickAccess && !f.isTrashed);
+
   const addFolder = (name: string, color: FolderColor = 'blue') => {
     const newFolder: Folder = {
       id: `folder-${Date.now()}`,
@@ -62,6 +74,8 @@ export function FolderProvider({ children }: { children: ReactNode }) {
       isSystem: false,
       documentCount: 0,
       createdAt: new Date(),
+      isQuickAccess: false,
+      isTrashed: false,
     };
     saveFolders([...folders, newFolder]);
   };
@@ -75,21 +89,39 @@ export function FolderProvider({ children }: { children: ReactNode }) {
   };
 
   const deleteFolder = (id: string) => {
-    saveFolders(folders.filter(f => f.id !== id));
+    // Move to trash instead of permanent delete
+    saveFolders(folders.map(f => f.id === id ? { ...f, isTrashed: true, isQuickAccess: false } : f));
     if (selectedFolderId === id) {
       setSelectedFolderId('all');
     }
   };
 
+  const restoreFolder = (id: string) => {
+    saveFolders(folders.map(f => f.id === id ? { ...f, isTrashed: false } : f));
+  };
+
+  const permanentlyDeleteFolder = (id: string) => {
+    saveFolders(folders.filter(f => f.id !== id));
+  };
+
+  const toggleQuickAccess = (id: string) => {
+    saveFolders(folders.map(f => f.id === id ? { ...f, isQuickAccess: !f.isQuickAccess } : f));
+  };
+
   return (
     <FolderContext.Provider value={{
-      folders,
+      folders: activeFolders,
+      trashedFolders,
+      quickAccessFolders,
       selectedFolderId,
       setSelectedFolderId,
       addFolder,
       renameFolder,
       updateFolderColor,
       deleteFolder,
+      restoreFolder,
+      permanentlyDeleteFolder,
+      toggleQuickAccess,
     }}>
       {children}
     </FolderContext.Provider>
