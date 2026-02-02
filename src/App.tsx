@@ -11,6 +11,7 @@ import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import Dashboard from "./pages/Dashboard";
 import Documents from "./pages/Documents";
+import Folders from "./pages/Folders";
 import Integrations from "./pages/Integrations";
 import Settings from "./pages/Settings";
 import Profile from "./pages/Profile";
@@ -34,6 +35,7 @@ const App = () => (
                   <Route path="/signup" element={<Signup />} />
                   <Route path="/dashboard" element={<Dashboard />} />
                   <Route path="/documents" element={<Documents />} />
+                  <Route path="/folders" element={<Folders />} />
                   <Route path="/integrations" element={<Integrations />} />
                   <Route path="/settings" element={<Settings />} />
                   <Route path="/profile" element={<Profile />} />
