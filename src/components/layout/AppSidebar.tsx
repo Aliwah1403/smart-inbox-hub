@@ -57,6 +57,7 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
 const navItems = [
   { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard' },
   { icon: FileText, label: 'Documents', path: '/documents' },
+  { icon: Folder, label: 'Folders', path: '/folders' },
   { icon: Link2, label: 'Integrations', path: '/integrations' },
 ];
 
