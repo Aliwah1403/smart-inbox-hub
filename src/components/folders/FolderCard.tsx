@@ -131,7 +131,7 @@ export function FolderCard({ folder, viewMode, onClick, isTrashed = false }: Fol
           {folder.documentCount} {folder.documentCount === 1 ? 'file' : 'files'}
         </p>
       </div>
-      {!folder.isSystem && !isTrashed && (
+      {!isTrashed && (
         <div onClick={stopPropagation}>
           <FolderActions
             folder={folder}
@@ -176,7 +176,7 @@ export function FolderCard({ folder, viewMode, onClick, isTrashed = false }: Fol
           <Pin className="h-4 w-4 text-muted-foreground" />
         </div>
       )}
-      {!folder.isSystem && !isTrashed && (
+      {!isTrashed && (
         <div 
           className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
           onClick={stopPropagation}
@@ -260,44 +260,40 @@ export function FolderCard({ folder, viewMode, onClick, isTrashed = false }: Fol
               </>
             )}
           </ContextMenuItem>
-          {!folder.isSystem && (
-            <>
-              <ContextMenuSeparator />
-              <ContextMenuItem onClick={() => { setEditName(folder.name); setEditDialog(true); }}>
-                <Pencil className="mr-2 h-4 w-4" />
-                Rename
-              </ContextMenuItem>
-              <ContextMenuSub>
-                <ContextMenuSubTrigger>
-                  <Palette className="mr-2 h-4 w-4" />
-                  Change Color
-                </ContextMenuSubTrigger>
-                <ContextMenuSubContent className="w-48">
-                  {allColors.map((color) => (
-                    <ContextMenuItem 
-                      key={color} 
-                      onClick={() => handleColorChange(color)}
-                      className="flex items-center gap-2"
-                    >
-                      <div 
-                        className="w-4 h-4 rounded-full" 
-                        style={{ backgroundColor: colorHexValues[color] }} 
-                      />
-                      {colorLabels[color]}
-                      {folder.color === color && (
-                        <span className="ml-auto text-xs text-muted-foreground">✓</span>
-                      )}
-                    </ContextMenuItem>
-                  ))}
-                </ContextMenuSubContent>
-              </ContextMenuSub>
-              <ContextMenuSeparator />
-              <ContextMenuItem className="text-destructive focus:text-destructive" onClick={() => deleteFolder(folder.id)}>
-                <Trash2 className="mr-2 h-4 w-4" />
-                Move to Trash
-              </ContextMenuItem>
-            </>
-          )}
+          <ContextMenuSeparator />
+          <ContextMenuItem onClick={() => { setEditName(folder.name); setEditDialog(true); }}>
+            <Pencil className="mr-2 h-4 w-4" />
+            Rename
+          </ContextMenuItem>
+          <ContextMenuSub>
+            <ContextMenuSubTrigger>
+              <Palette className="mr-2 h-4 w-4" />
+              Change Color
+            </ContextMenuSubTrigger>
+            <ContextMenuSubContent className="w-48">
+              {allColors.map((color) => (
+                <ContextMenuItem 
+                  key={color} 
+                  onClick={() => handleColorChange(color)}
+                  className="flex items-center gap-2"
+                >
+                  <div 
+                    className="w-4 h-4 rounded-full" 
+                    style={{ backgroundColor: colorHexValues[color] }} 
+                  />
+                  {colorLabels[color]}
+                  {folder.color === color && (
+                    <span className="ml-auto text-xs text-muted-foreground">✓</span>
+                  )}
+                </ContextMenuItem>
+              ))}
+            </ContextMenuSubContent>
+          </ContextMenuSub>
+          <ContextMenuSeparator />
+          <ContextMenuItem className="text-destructive focus:text-destructive" onClick={() => deleteFolder(folder.id)}>
+            <Trash2 className="mr-2 h-4 w-4" />
+            Move to Trash
+          </ContextMenuItem>
         </ContextMenuContent>
       </ContextMenu>
       <RenameDialog
