@@ -9,6 +9,9 @@ import {
   ContextMenuItem,
   ContextMenuSeparator,
   ContextMenuTrigger,
+  ContextMenuSub,
+  ContextMenuSubTrigger,
+  ContextMenuSubContent,
 } from '@/components/ui/context-menu';
 import {
   DropdownMenu,
@@ -16,6 +19,9 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent,
 } from '@/components/ui/dropdown-menu';
 import {
   Dialog,
@@ -56,13 +62,24 @@ const colorHexValues: Record<FolderColor, string> = {
   teal: '#2DD4BF',
 };
 
+const colorLabels: Record<FolderColor, string> = {
+  blue: 'Blue',
+  pink: 'Pink',
+  yellow: 'Yellow',
+  red: 'Red',
+  green: 'Green',
+  purple: 'Purple',
+  orange: 'Orange',
+  teal: 'Teal',
+};
+
 export function FolderCard({ folder, viewMode, onClick, isTrashed = false }: FolderCardProps) {
   const { renameFolder, updateFolderColor, deleteFolder, toggleQuickAccess, restoreFolder, permanentlyDeleteFolder } = useFolders();
   const [editDialog, setEditDialog] = useState(false);
-  const [colorDialog, setColorDialog] = useState(false);
   const [editName, setEditName] = useState(folder.name);
 
   const colors = folderColors[folder.color];
+  const allColors: FolderColor[] = ['blue', 'pink', 'yellow', 'red', 'green', 'purple', 'orange', 'teal'];
 
   const handleRename = () => {
     if (editName.trim()) {
@@ -73,7 +90,7 @@ export function FolderCard({ folder, viewMode, onClick, isTrashed = false }: Fol
 
   const handleColorChange = (color: FolderColor) => {
     updateFolderColor(folder.id, color);
-    setColorDialog(false);
+    toast.success(`Folder color changed to ${colorLabels[color]}`);
   };
 
   const handleToggleQuickAccess = () => {
@@ -114,14 +131,30 @@ export function FolderCard({ folder, viewMode, onClick, isTrashed = false }: Fol
           {folder.documentCount} {folder.documentCount === 1 ? 'file' : 'files'}
         </p>
       </div>
-      {!folder.isSystem && (
+      {!folder.isSystem && !isTrashed && (
         <div onClick={stopPropagation}>
           <FolderActions
             folder={folder}
+            allColors={allColors}
             onRename={() => { setEditName(folder.name); setEditDialog(true); }}
-            onColor={() => setColorDialog(true)}
+            onColorChange={handleColorChange}
             onDelete={() => deleteFolder(folder.id)}
             onToggleQuickAccess={handleToggleQuickAccess}
+            isTrashed={isTrashed}
+            onRestore={handleRestore}
+            onPermanentDelete={handlePermanentDelete}
+          />
+        </div>
+      )}
+      {isTrashed && (
+        <div onClick={stopPropagation}>
+          <FolderActions
+            folder={folder}
+            allColors={allColors}
+            onRename={() => {}}
+            onColorChange={handleColorChange}
+            onDelete={() => {}}
+            onToggleQuickAccess={() => {}}
             isTrashed={isTrashed}
             onRestore={handleRestore}
             onPermanentDelete={handlePermanentDelete}
@@ -143,17 +176,36 @@ export function FolderCard({ folder, viewMode, onClick, isTrashed = false }: Fol
           <Pin className="h-4 w-4 text-muted-foreground" />
         </div>
       )}
-      {!folder.isSystem && (
+      {!folder.isSystem && !isTrashed && (
         <div 
           className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
           onClick={stopPropagation}
         >
           <FolderActions
             folder={folder}
+            allColors={allColors}
             onRename={() => { setEditName(folder.name); setEditDialog(true); }}
-            onColor={() => setColorDialog(true)}
+            onColorChange={handleColorChange}
             onDelete={() => deleteFolder(folder.id)}
             onToggleQuickAccess={handleToggleQuickAccess}
+            isTrashed={isTrashed}
+            onRestore={handleRestore}
+            onPermanentDelete={handlePermanentDelete}
+          />
+        </div>
+      )}
+      {isTrashed && (
+        <div 
+          className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
+          onClick={stopPropagation}
+        >
+          <FolderActions
+            folder={folder}
+            allColors={allColors}
+            onRename={() => {}}
+            onColorChange={handleColorChange}
+            onDelete={() => {}}
+            onToggleQuickAccess={() => {}}
             isTrashed={isTrashed}
             onRestore={handleRestore}
             onPermanentDelete={handlePermanentDelete}
@@ -184,12 +236,6 @@ export function FolderCard({ folder, viewMode, onClick, isTrashed = false }: Fol
           onNameChange={setEditName}
           onSave={handleRename}
         />
-        <ColorDialog
-          open={colorDialog}
-          onOpenChange={setColorDialog}
-          currentColor={folder.color}
-          onColorChange={handleColorChange}
-        />
       </>
     );
   }
@@ -197,10 +243,10 @@ export function FolderCard({ folder, viewMode, onClick, isTrashed = false }: Fol
   return (
     <>
       <ContextMenu>
-        <ContextMenuTrigger>
+        <ContextMenuTrigger asChild>
           {cardContent}
         </ContextMenuTrigger>
-        <ContextMenuContent className="w-48">
+        <ContextMenuContent className="w-56">
           <ContextMenuItem onClick={handleToggleQuickAccess}>
             {folder.isQuickAccess ? (
               <>
@@ -221,12 +267,32 @@ export function FolderCard({ folder, viewMode, onClick, isTrashed = false }: Fol
                 <Pencil className="mr-2 h-4 w-4" />
                 Rename
               </ContextMenuItem>
-              <ContextMenuItem onClick={() => setColorDialog(true)}>
-                <Palette className="mr-2 h-4 w-4" />
-                Change Color
-              </ContextMenuItem>
+              <ContextMenuSub>
+                <ContextMenuSubTrigger>
+                  <Palette className="mr-2 h-4 w-4" />
+                  Change Color
+                </ContextMenuSubTrigger>
+                <ContextMenuSubContent className="w-48">
+                  {allColors.map((color) => (
+                    <ContextMenuItem 
+                      key={color} 
+                      onClick={() => handleColorChange(color)}
+                      className="flex items-center gap-2"
+                    >
+                      <div 
+                        className="w-4 h-4 rounded-full" 
+                        style={{ backgroundColor: colorHexValues[color] }} 
+                      />
+                      {colorLabels[color]}
+                      {folder.color === color && (
+                        <span className="ml-auto text-xs text-muted-foreground">✓</span>
+                      )}
+                    </ContextMenuItem>
+                  ))}
+                </ContextMenuSubContent>
+              </ContextMenuSub>
               <ContextMenuSeparator />
-              <ContextMenuItem className="text-destructive" onClick={() => deleteFolder(folder.id)}>
+              <ContextMenuItem className="text-destructive focus:text-destructive" onClick={() => deleteFolder(folder.id)}>
                 <Trash2 className="mr-2 h-4 w-4" />
                 Move to Trash
               </ContextMenuItem>
@@ -240,12 +306,6 @@ export function FolderCard({ folder, viewMode, onClick, isTrashed = false }: Fol
         name={editName}
         onNameChange={setEditName}
         onSave={handleRename}
-      />
-      <ColorDialog
-        open={colorDialog}
-        onOpenChange={setColorDialog}
-        currentColor={folder.color}
-        onColorChange={handleColorChange}
       />
     </>
   );
@@ -284,8 +344,9 @@ function FolderIcon({ color, size }: { color: FolderColor; size: 'sm' | 'lg' }) 
 
 function FolderActions({ 
   folder, 
+  allColors,
   onRename, 
-  onColor, 
+  onColorChange, 
   onDelete,
   onToggleQuickAccess,
   isTrashed,
@@ -293,8 +354,9 @@ function FolderActions({
   onPermanentDelete,
 }: { 
   folder: Folder;
+  allColors: FolderColor[];
   onRename: () => void;
-  onColor: () => void;
+  onColorChange: (color: FolderColor) => void;
   onDelete: () => void;
   onToggleQuickAccess: () => void;
   isTrashed?: boolean;
@@ -331,7 +393,7 @@ function FolderActions({
           <MoreHorizontal className="h-4 w-4" />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
+      <DropdownMenuContent align="end" className="w-56">
         <DropdownMenuItem onClick={onToggleQuickAccess}>
           {folder.isQuickAccess ? (
             <>
@@ -350,12 +412,32 @@ function FolderActions({
           <Pencil className="mr-2 h-4 w-4" />
           Rename
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={onColor}>
-          <Palette className="mr-2 h-4 w-4" />
-          Change Color
-        </DropdownMenuItem>
+        <DropdownMenuSub>
+          <DropdownMenuSubTrigger>
+            <Palette className="mr-2 h-4 w-4" />
+            Change Color
+          </DropdownMenuSubTrigger>
+          <DropdownMenuSubContent>
+            {allColors.map((color) => (
+              <DropdownMenuItem 
+                key={color} 
+                onClick={() => onColorChange(color)}
+                className="flex items-center gap-2"
+              >
+                <div 
+                  className="w-4 h-4 rounded-full" 
+                  style={{ backgroundColor: colorHexValues[color] }} 
+                />
+                {colorLabels[color]}
+                {folder.color === color && (
+                  <span className="ml-auto text-xs text-muted-foreground">✓</span>
+                )}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuSubContent>
+        </DropdownMenuSub>
         <DropdownMenuSeparator />
-        <DropdownMenuItem className="text-destructive" onClick={onDelete}>
+        <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={onDelete}>
           <Trash2 className="mr-2 h-4 w-4" />
           Move to Trash
         </DropdownMenuItem>
@@ -398,41 +480,4 @@ function RenameDialog({
   );
 }
 
-function ColorDialog({
-  open,
-  onOpenChange,
-  currentColor,
-  onColorChange,
-}: {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  currentColor: FolderColor;
-  onColorChange: (color: FolderColor) => void;
-}) {
-  const colors: FolderColor[] = ['blue', 'pink', 'yellow', 'red', 'green', 'purple', 'orange', 'teal'];
-  
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent onClick={(e) => e.stopPropagation()}>
-        <DialogHeader>
-          <DialogTitle>Choose Folder Color</DialogTitle>
-        </DialogHeader>
-        <div className="flex flex-wrap gap-3 justify-center py-4">
-          {colors.map((color) => (
-            <button
-              key={color}
-              onClick={() => onColorChange(color)}
-              className={cn(
-                "w-12 h-12 rounded-xl transition-all",
-                currentColor === color 
-                  ? 'ring-2 ring-offset-2 ring-primary scale-110' 
-                  : 'hover:scale-105'
-              )}
-              style={{ backgroundColor: colorHexValues[color] }}
-            />
-          ))}
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
-}
+// ColorDialog is no longer used - colors are now in submenus

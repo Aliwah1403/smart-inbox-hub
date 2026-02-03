@@ -1,4 +1,5 @@
-import { createContext, useContext, useState, ReactNode } from 'react';
+import { createContext, useContext, useState, ReactNode, useRef, useCallback } from 'react';
+import { toast } from 'sonner';
 
 export type FolderColor = 'blue' | 'pink' | 'yellow' | 'red' | 'green' | 'purple' | 'orange' | 'teal';
 
@@ -88,13 +89,32 @@ export function FolderProvider({ children }: { children: ReactNode }) {
     saveFolders(folders.map(f => f.id === id ? { ...f, color } : f));
   };
 
-  const deleteFolder = (id: string) => {
-    // Move to trash instead of permanent delete
-    saveFolders(folders.map(f => f.id === id ? { ...f, isTrashed: true, isQuickAccess: false } : f));
+  const deleteFolder = useCallback((id: string) => {
+    const folderToTrash = folders.find(f => f.id === id);
+    if (!folderToTrash) return;
+
+    // Move to trash
+    const updatedFolders = folders.map(f => f.id === id ? { ...f, isTrashed: true, isQuickAccess: false } : f);
+    saveFolders(updatedFolders);
+    
     if (selectedFolderId === id) {
       setSelectedFolderId('all');
     }
-  };
+
+    // Show toast with undo action
+    toast(`"${folderToTrash.name}" moved to trash`, {
+      duration: 5000,
+      action: {
+        label: 'Undo',
+        onClick: () => {
+          // Restore the folder
+          const restoredFolders = updatedFolders.map(f => f.id === id ? { ...f, isTrashed: false } : f);
+          saveFolders(restoredFolders);
+          toast.success(`"${folderToTrash.name}" restored`);
+        },
+      },
+    });
+  }, [folders, selectedFolderId]);
 
   const restoreFolder = (id: string) => {
     saveFolders(folders.map(f => f.id === id ? { ...f, isTrashed: false } : f));
