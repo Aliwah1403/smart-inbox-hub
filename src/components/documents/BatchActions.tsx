@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Tag, Trash2, X } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { availableTags } from '@/data/mockData';
@@ -9,6 +10,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { DeleteDocumentDialog } from './DeleteDocumentDialog';
 
 interface BatchActionsProps {
   selectedIds: string[];
@@ -16,7 +18,8 @@ interface BatchActionsProps {
 }
 
 export function BatchActions({ selectedIds, onClearSelection }: BatchActionsProps) {
-  const { documents, updateDocument, deleteDocuments } = useApp();
+  const { documents, updateDocument } = useApp();
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   const handleAddTag = (tag: string) => {
     selectedIds.forEach(id => {
@@ -27,50 +30,54 @@ export function BatchActions({ selectedIds, onClearSelection }: BatchActionsProp
     });
   };
 
-  const handleDelete = () => {
-    deleteDocuments(selectedIds);
-    onClearSelection();
-  };
-
   if (selectedIds.length === 0) return null;
 
   return (
-    <div className="flex items-center gap-3 rounded-lg bg-muted p-3 animate-fade-in">
-      <Badge variant="secondary" className="gap-1">
-        {selectedIds.length} selected
-        <X 
-          className="h-3 w-3 cursor-pointer" 
-          onClick={onClearSelection}
-        />
-      </Badge>
+    <>
+      <div className="flex items-center gap-3 rounded-lg bg-muted p-3 animate-fade-in">
+        <Badge variant="secondary" className="gap-1">
+          {selectedIds.length} selected
+          <X 
+            className="h-3 w-3 cursor-pointer" 
+            onClick={onClearSelection}
+          />
+        </Badge>
 
-      <div className="h-4 w-px bg-border" />
+        <div className="h-4 w-px bg-border" />
 
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="outline" size="sm">
-            <Tag className="mr-2 h-4 w-4" />
-            Add tag
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent>
-          {availableTags.map((tag) => (
-            <DropdownMenuItem key={tag} onClick={() => handleAddTag(tag)}>
-              {tag}
-            </DropdownMenuItem>
-          ))}
-        </DropdownMenuContent>
-      </DropdownMenu>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm">
+              <Tag className="mr-2 h-4 w-4" />
+              Add tag
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent>
+            {availableTags.map((tag) => (
+              <DropdownMenuItem key={tag} onClick={() => handleAddTag(tag)}>
+                {tag}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
 
-      <Button 
-        variant="outline" 
-        size="sm" 
-        className="text-destructive hover:text-destructive"
-        onClick={handleDelete}
-      >
-        <Trash2 className="mr-2 h-4 w-4" />
-        Delete
-      </Button>
-    </div>
+        <Button 
+          variant="outline" 
+          size="sm" 
+          className="text-destructive hover:text-destructive"
+          onClick={() => setDeleteDialogOpen(true)}
+        >
+          <Trash2 className="mr-2 h-4 w-4" />
+          Delete
+        </Button>
+      </div>
+
+      <DeleteDocumentDialog
+        documentIds={selectedIds}
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        onComplete={onClearSelection}
+      />
+    </>
   );
 }
