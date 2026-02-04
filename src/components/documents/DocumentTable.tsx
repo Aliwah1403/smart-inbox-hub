@@ -80,6 +80,8 @@ export function DocumentTable({
 }: DocumentTableProps) {
   const { user } = useApp();
   const isAdmin = user?.role === 'admin';
+  
+  // State for delete confirmation dialog
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [documentToDelete, setDocumentToDelete] = useState<string[]>([]);
 
