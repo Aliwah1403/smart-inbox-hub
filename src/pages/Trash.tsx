@@ -1,11 +1,13 @@
 import { useState } from 'react';
-import { Trash2, RotateCcw, AlertTriangle } from 'lucide-react';
-import { format } from 'date-fns';
+import { Trash2, RotateCcw, AlertTriangle, FileText, Folder } from 'lucide-react';
+import { format, differenceInDays } from 'date-fns';
 import { useApp } from '@/context/AppContext';
+import { useFolders } from '@/context/FolderContext';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Table,
   TableBody,
@@ -25,58 +27,136 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
-import { FileText } from 'lucide-react';
+
+const TRASH_RETENTION_DAYS = 30;
+
+function getDaysUntilExpiry(trashedAt?: Date): number {
+  if (!trashedAt) return TRASH_RETENTION_DAYS;
+  const daysSinceTrashed = differenceInDays(new Date(), new Date(trashedAt));
+  return Math.max(0, TRASH_RETENTION_DAYS - daysSinceTrashed);
+}
+
+function ExpiryBadge({ daysLeft }: { daysLeft: number }) {
+  const variant = daysLeft <= 7 ? 'destructive' : daysLeft <= 14 ? 'secondary' : 'outline';
+  return (
+    <Badge variant={variant} className="font-mono">
+      {daysLeft} {daysLeft === 1 ? 'day' : 'days'}
+    </Badge>
+  );
+}
 
 export default function Trash() {
   const { trashedDocuments, restoreDocuments, permanentlyDeleteDocuments } = useApp();
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const { trashedFolders, restoreFolder, permanentlyDeleteFolder } = useFolders();
+  
+  const [selectedDocIds, setSelectedDocIds] = useState<string[]>([]);
+  const [selectedFolderIds, setSelectedFolderIds] = useState<string[]>([]);
+  const [deleteDocDialogOpen, setDeleteDocDialogOpen] = useState(false);
+  const [deleteFolderDialogOpen, setDeleteFolderDialogOpen] = useState(false);
   const [emptyTrashDialogOpen, setEmptyTrashDialogOpen] = useState(false);
 
-  const toggleSelectAll = () => {
-    if (selectedIds.length === trashedDocuments.length) {
-      setSelectedIds([]);
+  const totalTrashedItems = trashedDocuments.length + trashedFolders.length;
+
+  // Document handlers
+  const toggleSelectAllDocs = () => {
+    if (selectedDocIds.length === trashedDocuments.length) {
+      setSelectedDocIds([]);
     } else {
-      setSelectedIds(trashedDocuments.map(d => d.id));
+      setSelectedDocIds(trashedDocuments.map(d => d.id));
     }
   };
 
-  const toggleSelect = (id: string) => {
-    if (selectedIds.includes(id)) {
-      setSelectedIds(selectedIds.filter(i => i !== id));
+  const toggleSelectDoc = (id: string) => {
+    if (selectedDocIds.includes(id)) {
+      setSelectedDocIds(selectedDocIds.filter(i => i !== id));
     } else {
-      setSelectedIds([...selectedIds, id]);
+      setSelectedDocIds([...selectedDocIds, id]);
     }
   };
 
-  const handleRestore = () => {
-    restoreDocuments(selectedIds);
+  const handleRestoreDocs = () => {
+    restoreDocuments(selectedDocIds);
     toast.success(
-      selectedIds.length === 1
+      selectedDocIds.length === 1
         ? 'Document restored'
-        : `${selectedIds.length} documents restored`
+        : `${selectedDocIds.length} documents restored`
     );
-    setSelectedIds([]);
+    setSelectedDocIds([]);
   };
 
-  const handlePermanentDelete = () => {
-    permanentlyDeleteDocuments(selectedIds);
+  const handlePermanentDeleteDocs = () => {
+    permanentlyDeleteDocuments(selectedDocIds);
     toast.success(
-      selectedIds.length === 1
+      selectedDocIds.length === 1
         ? 'Document permanently deleted'
-        : `${selectedIds.length} documents permanently deleted`
+        : `${selectedDocIds.length} documents permanently deleted`
     );
-    setSelectedIds([]);
-    setDeleteDialogOpen(false);
+    setSelectedDocIds([]);
+    setDeleteDocDialogOpen(false);
   };
 
+  // Folder handlers
+  const toggleSelectAllFolders = () => {
+    if (selectedFolderIds.length === trashedFolders.length) {
+      setSelectedFolderIds([]);
+    } else {
+      setSelectedFolderIds(trashedFolders.map(f => f.id));
+    }
+  };
+
+  const toggleSelectFolder = (id: string) => {
+    if (selectedFolderIds.includes(id)) {
+      setSelectedFolderIds(selectedFolderIds.filter(i => i !== id));
+    } else {
+      setSelectedFolderIds([...selectedFolderIds, id]);
+    }
+  };
+
+  const handleRestoreFolders = () => {
+    selectedFolderIds.forEach(id => restoreFolder(id));
+    toast.success(
+      selectedFolderIds.length === 1
+        ? 'Folder restored'
+        : `${selectedFolderIds.length} folders restored`
+    );
+    setSelectedFolderIds([]);
+  };
+
+  const handlePermanentDeleteFolders = () => {
+    selectedFolderIds.forEach(id => permanentlyDeleteFolder(id));
+    toast.success(
+      selectedFolderIds.length === 1
+        ? 'Folder permanently deleted'
+        : `${selectedFolderIds.length} folders permanently deleted`
+    );
+    setSelectedFolderIds([]);
+    setDeleteFolderDialogOpen(false);
+  };
+
+  // Empty all trash
   const handleEmptyTrash = () => {
-    const allIds = trashedDocuments.map(d => d.id);
-    permanentlyDeleteDocuments(allIds);
+    const allDocIds = trashedDocuments.map(d => d.id);
+    permanentlyDeleteDocuments(allDocIds);
+    trashedFolders.forEach(f => permanentlyDeleteFolder(f.id));
     toast.success('Trash emptied');
-    setSelectedIds([]);
+    setSelectedDocIds([]);
+    setSelectedFolderIds([]);
     setEmptyTrashDialogOpen(false);
   };
+
+  const EmptyState = ({ type }: { type: 'documents' | 'folders' }) => (
+    <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-border py-16">
+      {type === 'documents' ? (
+        <FileText className="mb-4 h-12 w-12 text-muted-foreground" />
+      ) : (
+        <Folder className="mb-4 h-12 w-12 text-muted-foreground" />
+      )}
+      <h3 className="mb-1 text-lg font-medium">No {type} in trash</h3>
+      <p className="text-sm text-muted-foreground">
+        {type === 'documents' ? 'Documents' : 'Folders'} you delete will appear here
+      </p>
+    </div>
+  );
 
   return (
     <AppLayout>
@@ -89,10 +169,11 @@ export default function Trash() {
               Trash
             </h1>
             <p className="text-muted-foreground">
-              {trashedDocuments.length} document{trashedDocuments.length !== 1 ? 's' : ''} in trash
+              {totalTrashedItems} item{totalTrashedItems !== 1 ? 's' : ''} in trash
+              {totalTrashedItems > 0 && ' • Items are permanently deleted after 30 days'}
             </p>
           </div>
-          {trashedDocuments.length > 0 && (
+          {totalTrashedItems > 0 && (
             <Button
               variant="destructive"
               onClick={() => setEmptyTrashDialogOpen(true)}
@@ -103,111 +184,259 @@ export default function Trash() {
           )}
         </div>
 
-        {/* Batch Actions */}
-        {selectedIds.length > 0 && (
-          <div className="flex items-center gap-3 rounded-lg bg-muted p-3">
-            <Badge variant="secondary">
-              {selectedIds.length} selected
-            </Badge>
-            <div className="h-4 w-px bg-border" />
-            <Button variant="outline" size="sm" onClick={handleRestore}>
-              <RotateCcw className="mr-2 h-4 w-4" />
-              Restore
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              className="text-destructive hover:text-destructive"
-              onClick={() => setDeleteDialogOpen(true)}
-            >
-              <Trash2 className="mr-2 h-4 w-4" />
-              Delete Forever
-            </Button>
-          </div>
-        )}
-
-        {/* Table */}
-        {trashedDocuments.length === 0 ? (
+        {totalTrashedItems === 0 ? (
           <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-border py-16">
             <Trash2 className="mb-4 h-12 w-12 text-muted-foreground" />
             <h3 className="mb-1 text-lg font-medium">Trash is empty</h3>
             <p className="text-sm text-muted-foreground">
-              Documents you delete will appear here
+              Items you delete will appear here
             </p>
           </div>
         ) : (
-          <div className="rounded-lg border border-border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-12">
-                    <Checkbox
-                      checked={selectedIds.length === trashedDocuments.length && trashedDocuments.length > 0}
-                      onCheckedChange={toggleSelectAll}
-                    />
-                  </TableHead>
-                  <TableHead>Document</TableHead>
-                  <TableHead>Deleted</TableHead>
-                  <TableHead className="w-32" />
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {trashedDocuments.map((doc) => (
-                  <TableRow key={doc.id}>
-                    <TableCell>
-                      <Checkbox
-                        checked={selectedIds.includes(doc.id)}
-                        onCheckedChange={() => toggleSelect(doc.id)}
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-3">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted">
-                          <FileText className="h-5 w-5 text-muted-foreground" />
-                        </div>
-                        <div>
-                          <p className="font-medium">{doc.title}</p>
-                          <p className="text-xs text-muted-foreground">{doc.filename}</p>
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {format(doc.uploadDate, 'MMM d, yyyy')}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex gap-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => {
-                            restoreDocuments([doc.id]);
-                            toast.success('Document restored');
-                          }}
-                        >
-                          <RotateCcw className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="text-destructive hover:text-destructive"
-                          onClick={() => {
-                            setSelectedIds([doc.id]);
-                            setDeleteDialogOpen(true);
-                          }}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
+          <Tabs defaultValue="documents" className="space-y-4">
+            <TabsList>
+              <TabsTrigger value="documents" className="gap-2">
+                <FileText className="h-4 w-4" />
+                Documents
+                {trashedDocuments.length > 0 && (
+                  <Badge variant="secondary" className="ml-1">
+                    {trashedDocuments.length}
+                  </Badge>
+                )}
+              </TabsTrigger>
+              <TabsTrigger value="folders" className="gap-2">
+                <Folder className="h-4 w-4" />
+                Folders
+                {trashedFolders.length > 0 && (
+                  <Badge variant="secondary" className="ml-1">
+                    {trashedFolders.length}
+                  </Badge>
+                )}
+              </TabsTrigger>
+            </TabsList>
+
+            {/* Documents Tab */}
+            <TabsContent value="documents" className="space-y-4">
+              {/* Batch Actions */}
+              {selectedDocIds.length > 0 && (
+                <div className="flex items-center gap-3 rounded-lg bg-muted p-3">
+                  <Badge variant="secondary">
+                    {selectedDocIds.length} selected
+                  </Badge>
+                  <div className="h-4 w-px bg-border" />
+                  <Button variant="outline" size="sm" onClick={handleRestoreDocs}>
+                    <RotateCcw className="mr-2 h-4 w-4" />
+                    Restore
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-destructive hover:text-destructive"
+                    onClick={() => setDeleteDocDialogOpen(true)}
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Delete Forever
+                  </Button>
+                </div>
+              )}
+
+              {trashedDocuments.length === 0 ? (
+                <EmptyState type="documents" />
+              ) : (
+                <div className="rounded-lg border border-border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-12">
+                          <Checkbox
+                            checked={selectedDocIds.length === trashedDocuments.length && trashedDocuments.length > 0}
+                            onCheckedChange={toggleSelectAllDocs}
+                          />
+                        </TableHead>
+                        <TableHead>Document</TableHead>
+                        <TableHead>Deleted</TableHead>
+                        <TableHead>Days Til Expiry</TableHead>
+                        <TableHead className="w-32" />
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {trashedDocuments.map((doc) => {
+                        const daysLeft = getDaysUntilExpiry(doc.trashedAt);
+                        return (
+                          <TableRow key={doc.id}>
+                            <TableCell>
+                              <Checkbox
+                                checked={selectedDocIds.includes(doc.id)}
+                                onCheckedChange={() => toggleSelectDoc(doc.id)}
+                              />
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-3">
+                                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted">
+                                  <FileText className="h-5 w-5 text-muted-foreground" />
+                                </div>
+                                <div>
+                                  <p className="font-medium">{doc.title}</p>
+                                  <p className="text-xs text-muted-foreground">{doc.filename}</p>
+                                </div>
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-sm text-muted-foreground">
+                              {doc.trashedAt 
+                                ? format(new Date(doc.trashedAt), 'MMM d, yyyy')
+                                : format(doc.uploadDate, 'MMM d, yyyy')}
+                            </TableCell>
+                            <TableCell>
+                              <ExpiryBadge daysLeft={daysLeft} />
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex gap-2">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => {
+                                    restoreDocuments([doc.id]);
+                                    toast.success('Document restored');
+                                  }}
+                                >
+                                  <RotateCcw className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="text-destructive hover:text-destructive"
+                                  onClick={() => {
+                                    setSelectedDocIds([doc.id]);
+                                    setDeleteDocDialogOpen(true);
+                                  }}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </TabsContent>
+
+            {/* Folders Tab */}
+            <TabsContent value="folders" className="space-y-4">
+              {/* Batch Actions */}
+              {selectedFolderIds.length > 0 && (
+                <div className="flex items-center gap-3 rounded-lg bg-muted p-3">
+                  <Badge variant="secondary">
+                    {selectedFolderIds.length} selected
+                  </Badge>
+                  <div className="h-4 w-px bg-border" />
+                  <Button variant="outline" size="sm" onClick={handleRestoreFolders}>
+                    <RotateCcw className="mr-2 h-4 w-4" />
+                    Restore
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-destructive hover:text-destructive"
+                    onClick={() => setDeleteFolderDialogOpen(true)}
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Delete Forever
+                  </Button>
+                </div>
+              )}
+
+              {trashedFolders.length === 0 ? (
+                <EmptyState type="folders" />
+              ) : (
+                <div className="rounded-lg border border-border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-12">
+                          <Checkbox
+                            checked={selectedFolderIds.length === trashedFolders.length && trashedFolders.length > 0}
+                            onCheckedChange={toggleSelectAllFolders}
+                          />
+                        </TableHead>
+                        <TableHead>Folder</TableHead>
+                        <TableHead>Deleted</TableHead>
+                        <TableHead>Days Til Expiry</TableHead>
+                        <TableHead className="w-32" />
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {trashedFolders.map((folder) => {
+                        const daysLeft = getDaysUntilExpiry(folder.trashedAt);
+                        return (
+                          <TableRow key={folder.id}>
+                            <TableCell>
+                              <Checkbox
+                                checked={selectedFolderIds.includes(folder.id)}
+                                onCheckedChange={() => toggleSelectFolder(folder.id)}
+                              />
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-3">
+                                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted">
+                                  <Folder className="h-5 w-5 text-muted-foreground" />
+                                </div>
+                                <div>
+                                  <p className="font-medium">{folder.name}</p>
+                                  <p className="text-xs text-muted-foreground">
+                                    {folder.documentCount} {folder.documentCount === 1 ? 'file' : 'files'}
+                                  </p>
+                                </div>
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-sm text-muted-foreground">
+                              {folder.trashedAt 
+                                ? format(new Date(folder.trashedAt), 'MMM d, yyyy')
+                                : format(folder.createdAt, 'MMM d, yyyy')}
+                            </TableCell>
+                            <TableCell>
+                              <ExpiryBadge daysLeft={daysLeft} />
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex gap-2">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => {
+                                    restoreFolder(folder.id);
+                                    toast.success('Folder restored');
+                                  }}
+                                >
+                                  <RotateCcw className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="text-destructive hover:text-destructive"
+                                  onClick={() => {
+                                    setSelectedFolderIds([folder.id]);
+                                    setDeleteFolderDialogOpen(true);
+                                  }}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </TabsContent>
+          </Tabs>
         )}
 
-        {/* Permanent Delete Confirmation */}
-        <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        {/* Document Permanent Delete Confirmation */}
+        <AlertDialog open={deleteDocDialogOpen} onOpenChange={setDeleteDocDialogOpen}>
           <AlertDialogContent>
             <AlertDialogHeader>
               <AlertDialogTitle className="flex items-center gap-2">
@@ -215,15 +444,41 @@ export default function Trash() {
                 Delete Forever?
               </AlertDialogTitle>
               <AlertDialogDescription>
-                {selectedIds.length === 1
+                {selectedDocIds.length === 1
                   ? 'This document will be permanently deleted. This action cannot be undone.'
-                  : `${selectedIds.length} documents will be permanently deleted. This action cannot be undone.`}
+                  : `${selectedDocIds.length} documents will be permanently deleted. This action cannot be undone.`}
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel>Cancel</AlertDialogCancel>
               <AlertDialogAction
-                onClick={handlePermanentDelete}
+                onClick={handlePermanentDeleteDocs}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                Delete Forever
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Folder Permanent Delete Confirmation */}
+        <AlertDialog open={deleteFolderDialogOpen} onOpenChange={setDeleteFolderDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle className="flex items-center gap-2">
+                <AlertTriangle className="h-5 w-5 text-destructive" />
+                Delete Forever?
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                {selectedFolderIds.length === 1
+                  ? 'This folder will be permanently deleted. This action cannot be undone.'
+                  : `${selectedFolderIds.length} folders will be permanently deleted. This action cannot be undone.`}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handlePermanentDeleteFolders}
                 className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               >
                 Delete Forever
@@ -241,7 +496,7 @@ export default function Trash() {
                 Empty Trash?
               </AlertDialogTitle>
               <AlertDialogDescription>
-                All {trashedDocuments.length} document{trashedDocuments.length !== 1 ? 's' : ''} will be permanently deleted. This action cannot be undone.
+                All {totalTrashedItems} item{totalTrashedItems !== 1 ? 's' : ''} ({trashedDocuments.length} document{trashedDocuments.length !== 1 ? 's' : ''}, {trashedFolders.length} folder{trashedFolders.length !== 1 ? 's' : ''}) will be permanently deleted. This action cannot be undone.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>

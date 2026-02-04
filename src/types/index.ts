@@ -33,6 +33,7 @@ export interface Document {
   previewUrl?: string;
   isStarred?: boolean;
   isTrashed?: boolean;
+  trashedAt?: Date;
 }
 
 export interface Integration {

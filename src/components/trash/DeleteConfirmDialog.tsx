@@ -1,7 +1,4 @@
-import { useState } from 'react';
 import { Trash2 } from 'lucide-react';
-import { useApp } from '@/context/AppContext';
-import { toast } from 'sonner';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -13,40 +10,33 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 
-interface DeleteDocumentDialogProps {
-  documentIds: string[];
+interface DeleteConfirmDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onComplete?: () => void;
+  onConfirm: () => void;
+  itemType: 'document' | 'folder';
+  itemCount?: number;
+  itemName?: string;
 }
 
-export function DeleteDocumentDialog({
-  documentIds,
+export function DeleteConfirmDialog({
   open,
   onOpenChange,
-  onComplete,
-}: DeleteDocumentDialogProps) {
-  const { trashDocuments, restoreDocuments } = useApp();
-  const count = documentIds.length;
+  onConfirm,
+  itemType,
+  itemCount = 1,
+  itemName,
+}: DeleteConfirmDialogProps) {
+  const isMultiple = itemCount > 1;
+  const itemLabel = isMultiple 
+    ? `${itemCount} ${itemType}s` 
+    : itemName 
+      ? `"${itemName}"` 
+      : `this ${itemType}`;
 
   const handleConfirm = () => {
-    trashDocuments(documentIds);
+    onConfirm();
     onOpenChange(false);
-    onComplete?.();
-
-    toast.info(
-      count === 1 ? 'Document moved to trash' : `${count} documents moved to trash`,
-      {
-        action: {
-          label: 'Undo',
-          onClick: () => {
-            restoreDocuments(documentIds);
-            toast.success(count === 1 ? 'Document restored' : `${count} documents restored`);
-          },
-        },
-        duration: 5000,
-      }
-    );
   };
 
   return (
@@ -59,13 +49,13 @@ export function DeleteDocumentDialog({
           </AlertDialogTitle>
           <AlertDialogDescription className="space-y-2">
             <span className="block">
-              {count === 1
-                ? 'This document will be moved to the trash.'
-                : `${count} documents will be moved to the trash.`}
+              {isMultiple 
+                ? `${itemCount} ${itemType}s will be moved to the trash.`
+                : `${itemLabel} will be moved to the trash.`}
             </span>
             <span className="block text-muted-foreground">
-              You can restore {count === 1 ? 'it' : 'them'} from the Trash page within 30 days. 
-              After that, {count === 1 ? 'it' : 'they'} will be permanently deleted.
+              You can restore {isMultiple ? 'them' : 'it'} from the Trash page within 30 days. 
+              After that, {isMultiple ? 'they' : 'it'} will be permanently deleted.
             </span>
           </AlertDialogDescription>
         </AlertDialogHeader>
