@@ -117,7 +117,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const trashDocuments = (ids: string[]) => {
     setDocuments(prev =>
       prev.map(doc =>
-        ids.includes(doc.id) ? { ...doc, isTrashed: true, isStarred: false } : doc
+        ids.includes(doc.id) 
+          ? { ...doc, isTrashed: true, isStarred: false, trashedAt: new Date() } 
+          : doc
       )
     );
   };
@@ -125,7 +127,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const restoreDocuments = (ids: string[]) => {
     setDocuments(prev =>
       prev.map(doc =>
-        ids.includes(doc.id) ? { ...doc, isTrashed: false } : doc
+        ids.includes(doc.id) 
+          ? { ...doc, isTrashed: false, trashedAt: undefined } 
+          : doc
       )
     );
   };

@@ -13,6 +13,7 @@ export interface Folder {
   createdAt: Date;
   isQuickAccess?: boolean;
   isTrashed?: boolean;
+  trashedAt?: Date;
 }
 
 interface FolderContextType {
@@ -93,8 +94,12 @@ export function FolderProvider({ children }: { children: ReactNode }) {
     const folderToTrash = folders.find(f => f.id === id);
     if (!folderToTrash) return;
 
-    // Move to trash
-    const updatedFolders = folders.map(f => f.id === id ? { ...f, isTrashed: true, isQuickAccess: false } : f);
+    // Move to trash with trashedAt timestamp
+    const updatedFolders = folders.map(f => 
+      f.id === id 
+        ? { ...f, isTrashed: true, isQuickAccess: false, trashedAt: new Date() } 
+        : f
+    );
     saveFolders(updatedFolders);
     
     if (selectedFolderId === id) {
@@ -108,7 +113,11 @@ export function FolderProvider({ children }: { children: ReactNode }) {
         label: 'Undo',
         onClick: () => {
           // Restore the folder
-          const restoredFolders = updatedFolders.map(f => f.id === id ? { ...f, isTrashed: false } : f);
+          const restoredFolders = updatedFolders.map(f => 
+            f.id === id 
+              ? { ...f, isTrashed: false, trashedAt: undefined } 
+              : f
+          );
           saveFolders(restoredFolders);
           toast.success(`"${folderToTrash.name}" restored`);
         },
@@ -117,7 +126,7 @@ export function FolderProvider({ children }: { children: ReactNode }) {
   }, [folders, selectedFolderId]);
 
   const restoreFolder = (id: string) => {
-    saveFolders(folders.map(f => f.id === id ? { ...f, isTrashed: false } : f));
+    saveFolders(folders.map(f => f.id === id ? { ...f, isTrashed: false, trashedAt: undefined } : f));
   };
 
   const permanentlyDeleteFolder = (id: string) => {

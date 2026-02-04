@@ -32,6 +32,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { DeleteConfirmDialog } from '@/components/trash/DeleteConfirmDialog';
 
 interface FolderCardProps {
   folder: Folder & { documentCount: number };
@@ -77,6 +78,7 @@ export function FolderCard({ folder, viewMode, onClick, isTrashed = false }: Fol
   const { renameFolder, updateFolderColor, deleteFolder, toggleQuickAccess, restoreFolder, permanentlyDeleteFolder } = useFolders();
   const [editDialog, setEditDialog] = useState(false);
   const [editName, setEditName] = useState(folder.name);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   const colors = folderColors[folder.color];
   const allColors: FolderColor[] = ['blue', 'pink', 'yellow', 'red', 'green', 'purple', 'orange', 'teal'];
@@ -138,7 +140,7 @@ export function FolderCard({ folder, viewMode, onClick, isTrashed = false }: Fol
             allColors={allColors}
             onRename={() => { setEditName(folder.name); setEditDialog(true); }}
             onColorChange={handleColorChange}
-            onDelete={() => deleteFolder(folder.id)}
+            onDelete={() => setDeleteDialogOpen(true)}
             onToggleQuickAccess={handleToggleQuickAccess}
             isTrashed={isTrashed}
             onRestore={handleRestore}
@@ -186,7 +188,7 @@ export function FolderCard({ folder, viewMode, onClick, isTrashed = false }: Fol
             allColors={allColors}
             onRename={() => { setEditName(folder.name); setEditDialog(true); }}
             onColorChange={handleColorChange}
-            onDelete={() => deleteFolder(folder.id)}
+            onDelete={() => setDeleteDialogOpen(true)}
             onToggleQuickAccess={handleToggleQuickAccess}
             isTrashed={isTrashed}
             onRestore={handleRestore}
@@ -290,7 +292,10 @@ export function FolderCard({ folder, viewMode, onClick, isTrashed = false }: Fol
             </ContextMenuSubContent>
           </ContextMenuSub>
           <ContextMenuSeparator />
-          <ContextMenuItem className="text-destructive focus:text-destructive" onClick={() => deleteFolder(folder.id)}>
+          <ContextMenuItem 
+            className="text-destructive focus:text-destructive" 
+            onClick={() => setDeleteDialogOpen(true)}
+          >
             <Trash2 className="mr-2 h-4 w-4" />
             Move to Trash
           </ContextMenuItem>
@@ -302,6 +307,13 @@ export function FolderCard({ folder, viewMode, onClick, isTrashed = false }: Fol
         name={editName}
         onNameChange={setEditName}
         onSave={handleRename}
+      />
+      <DeleteConfirmDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        onConfirm={() => deleteFolder(folder.id)}
+        itemType="folder"
+        itemName={folder.name}
       />
     </>
   );
