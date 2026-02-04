@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { format } from 'date-fns';
 import { FileText, MoreHorizontal, Eye, Edit, Trash2, Share2, GripVertical } from 'lucide-react';
 import { Document, DocumentSource, DocumentStatus } from '@/types';
@@ -22,6 +23,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
+import { DeleteDocumentDialog } from './DeleteDocumentDialog';
 
 export interface DocumentTableProps {
   documents: Document[];
@@ -76,8 +78,15 @@ export function DocumentTable({
   onEditDocument,
   onShareDocument,
 }: DocumentTableProps) {
-  const { user, deleteDocuments } = useApp();
+  const { user } = useApp();
   const isAdmin = user?.role === 'admin';
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [documentToDelete, setDocumentToDelete] = useState<string[]>([]);
+
+  const handleDeleteClick = (docId: string) => {
+    setDocumentToDelete([docId]);
+    setDeleteDialogOpen(true);
+  };
 
   const toggleSelectAll = () => {
     if (selectedIds.length === documents.length) {
@@ -250,7 +259,7 @@ export function DocumentTable({
                     <DropdownMenuSeparator />
                     <DropdownMenuItem 
                       className="text-destructive"
-                      onClick={() => deleteDocuments([doc.id])}
+                      onClick={() => handleDeleteClick(doc.id)}
                     >
                       <Trash2 className="mr-2 h-4 w-4" />
                       Delete
@@ -262,6 +271,12 @@ export function DocumentTable({
           ))}
         </TableBody>
       </Table>
+
+      <DeleteDocumentDialog
+        documentIds={documentToDelete}
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+      />
     </div>
   );
 }

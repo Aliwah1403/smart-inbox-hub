@@ -58,6 +58,7 @@ const navItems = [
   { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard' },
   { icon: FileText, label: 'Documents', path: '/documents' },
   { icon: Folder, label: 'Folders', path: '/folders' },
+  { icon: Trash2, label: 'Trash', path: '/trash' },
   { icon: Link2, label: 'Integrations', path: '/integrations' },
 ];
 

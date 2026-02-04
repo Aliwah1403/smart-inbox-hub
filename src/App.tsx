@@ -15,6 +15,7 @@ import Folders from "./pages/Folders";
 import Integrations from "./pages/Integrations";
 import Settings from "./pages/Settings";
 import Profile from "./pages/Profile";
+import Trash from "./pages/Trash";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -36,6 +37,7 @@ const App = () => (
                   <Route path="/dashboard" element={<Dashboard />} />
                   <Route path="/documents" element={<Documents />} />
                   <Route path="/folders" element={<Folders />} />
+                  <Route path="/trash" element={<Trash />} />
                   <Route path="/integrations" element={<Integrations />} />
                   <Route path="/settings" element={<Settings />} />
                   <Route path="/profile" element={<Profile />} />
