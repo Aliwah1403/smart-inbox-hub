@@ -19,6 +19,7 @@ const iconMap: Record<NotificationType, typeof FileText> = {
   share: Share2,
   whatsapp: MessageSquare,
   system: AlertCircle,
+  trash_expiry: AlertCircle,
 };
 
 function NotificationItem({

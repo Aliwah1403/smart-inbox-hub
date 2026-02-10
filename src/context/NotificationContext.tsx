@@ -108,6 +108,17 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     setSettings(newSettings);
   };
 
+  const addNotification = (notification: Omit<Notification, 'id' | 'timestamp' | 'read' | 'archived'>) => {
+    const newNotification: Notification = {
+      ...notification,
+      id: `notif-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      timestamp: new Date(),
+      read: false,
+      archived: false,
+    };
+    setNotifications(prev => [newNotification, ...prev]);
+  };
+
   return (
     <NotificationContext.Provider
       value={{
@@ -119,6 +130,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
         archiveNotification,
         archiveAll,
         updateSettings,
+        addNotification,
       }}
     >
       {children}
