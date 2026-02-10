@@ -10,6 +10,7 @@ interface NotificationContextType {
   archiveNotification: (id: string) => void;
   archiveAll: () => void;
   updateSettings: (settings: NotificationSettings) => void;
+  addNotification: (notification: Omit<Notification, 'id' | 'timestamp' | 'read' | 'archived'>) => void;
 }
 
 const defaultSettings: NotificationSettings = {
