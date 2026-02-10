@@ -17,6 +17,7 @@ import Settings from "./pages/Settings";
 import Profile from "./pages/Profile";
 import Trash from "./pages/Trash";
 import NotFound from "./pages/NotFound";
+import { TrashExpiryMonitor } from "./components/trash/TrashExpiryMonitor";
 
 const queryClient = new QueryClient();
 
