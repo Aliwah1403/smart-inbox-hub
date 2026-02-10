@@ -30,6 +30,7 @@ const App = () => (
             <NotificationProvider>
               <Toaster />
               <Sonner />
+              <TrashExpiryMonitor />
               <BrowserRouter>
                 <Routes>
                   <Route path="/" element={<Navigate to="/documents" replace />} />
