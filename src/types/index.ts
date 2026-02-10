@@ -4,7 +4,7 @@ export type DocumentSource = 'manual_upload' | 'scan_to_email' | 'gmail' | 'outl
 
 export type DocumentStatus = 'parsed' | 'needs_review' | 'processing';
 
-export type NotificationType = 'document_sync' | 'document_upload' | 'share' | 'whatsapp' | 'system';
+export type NotificationType = 'document_sync' | 'document_upload' | 'share' | 'whatsapp' | 'system' | 'trash_expiry';
 
 export interface User {
   id: string;
