@@ -19,6 +19,7 @@ const defaultSettings: NotificationSettings = {
   shares: { email: true, inApp: true },
   whatsappMessages: { email: false, inApp: true },
   systemUpdates: { email: false, inApp: true },
+  trashExpiry: { email: true, inApp: true },
 };
 
 const mockNotifications: Notification[] = [

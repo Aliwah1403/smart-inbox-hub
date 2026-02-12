@@ -21,6 +21,7 @@ const settingLabels = {
   shares: 'Shared documents',
   whatsappMessages: 'WhatsApp messages',
   systemUpdates: 'System updates',
+  trashExpiry: 'Trash expiry alerts',
 };
 
 const settingDescriptions = {
@@ -29,6 +30,7 @@ const settingDescriptions = {
   shares: 'When someone shares a document with you',
   whatsappMessages: 'When documents are received via WhatsApp',
   systemUpdates: 'Maintenance notices and feature updates',
+  trashExpiry: 'When items in trash are about to be permanently deleted',
 };
 
 export function NotificationSettingsDialog({

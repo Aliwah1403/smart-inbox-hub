@@ -62,6 +62,7 @@ export interface NotificationSettings {
   shares: { email: boolean; inApp: boolean };
   whatsappMessages: { email: boolean; inApp: boolean };
   systemUpdates: { email: boolean; inApp: boolean };
+  trashExpiry: { email: boolean; inApp: boolean };
 }
 
 export interface DocumentFilters {
