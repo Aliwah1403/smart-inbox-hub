@@ -10,6 +10,12 @@
 
 @import url("https://fonts.googleapis.com/css2?family=Geist+Mono&display=swap");
 
+@import url("https://fonts.googleapis.com/css2?family=Inter&display=swap");
+
+@import url("https://fonts.googleapis.com/css2?family=Lora&display=swap");
+
+@import url("https://fonts.googleapis.com/css2?family=Space+Mono&display=swap");
+
 @layer base {
   :root {
     --background: 0 0% 98.0387%;
@@ -67,9 +73,9 @@
     --chart-4: 225.7181 51.8947% 50.4104%;
     --chart-5: 236.5829 64.2250% 21.4383%;
     --sidebar: 300 50% 100.0000%;
-    --font-sans: Geist, sans-serif;
-    --font-serif: Noto Serif Georgian, ui-serif, serif;
-    --font-mono: Geist Mono, monospace;
+    --font-sans: Inter, ui-sans-serif, system-ui, sans-serif, Apple Color Emoji, Segoe UI Emoji, Segoe UI Symbol, Noto Color Emoji;
+    --font-serif: Lora, ui-serif, Georgia, Cambria, Times New Roman, Times, serif;
+    --font-mono: "Space Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono, Courier New, monospace;
     --shadow-2xs: 0.25px 1px 3px 0px hsl(236.5829 64.2250% 21.4383% / 0.07);
     --shadow-xs: 0.25px 1px 3px 0px hsl(236.5829 64.2250% 21.4383% / 0.07);
     --shadow-sm: 0.25px 1px 3px 0px hsl(236.5829 64.2250% 21.4383% / 0.15), 0.25px 1px 2px -1px hsl(236.5829 64.2250% 21.4383% / 0.15);
