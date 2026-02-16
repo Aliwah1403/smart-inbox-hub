@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback } from 'react';
-import { Plus } from 'lucide-react';
+import { Plus, LayoutGrid, List } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { useFolders } from '@/context/FolderContext';
 import { Document, DocumentFilters as FilterType } from '@/types';
@@ -12,7 +12,9 @@ import { BatchActions } from '@/components/documents/BatchActions';
 import { PDFPreview } from '@/components/documents/PDFPreview';
 import { ShareDialog } from '@/components/documents/ShareDialog';
 import { DragDropZone } from '@/components/documents/DragDropZone';
+import { DocumentGrid } from '@/components/documents/DocumentGrid';
 import { Button } from '@/components/ui/button';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 
 const ITEMS_PER_PAGE = 10;
 
@@ -31,6 +33,7 @@ export default function Documents() {
   const [pdfPreviewOpen, setPdfPreviewOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+  const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
 
   const handleFilesDropped = useCallback((files: File[]) => {
     setDroppedFiles(files);
@@ -136,10 +139,20 @@ export default function Documents() {
                 {!isAdmin && ' (showing your uploads)'}
               </p>
             </div>
-            <Button onClick={() => setUploadOpen(true)}>
-              <Plus className="mr-2 h-4 w-4" />
-              Upload document
-            </Button>
+            <div className="flex items-center gap-2">
+              <ToggleGroup type="single" value={viewMode} onValueChange={(v) => v && setViewMode(v as 'list' | 'grid')}>
+                <ToggleGroupItem value="list" aria-label="List view" size="sm">
+                  <List className="h-4 w-4" />
+                </ToggleGroupItem>
+                <ToggleGroupItem value="grid" aria-label="Grid view" size="sm">
+                  <LayoutGrid className="h-4 w-4" />
+                </ToggleGroupItem>
+              </ToggleGroup>
+              <Button onClick={() => setUploadOpen(true)}>
+                <Plus className="mr-2 h-4 w-4" />
+                Upload document
+              </Button>
+            </div>
           </div>
 
           {/* Filters */}
@@ -153,15 +166,24 @@ export default function Documents() {
             />
           )}
 
-          {/* Table */}
-          <DocumentTable
-            documents={paginatedDocuments}
-            selectedIds={selectedIds}
-            onSelectIds={setSelectedIds}
-            onViewDocument={handleViewDocument}
-            onEditDocument={handleEditDocument}
-            onShareDocument={handleShareDocument}
-          />
+          {/* Documents view */}
+          {viewMode === 'list' ? (
+            <DocumentTable
+              documents={paginatedDocuments}
+              selectedIds={selectedIds}
+              onSelectIds={setSelectedIds}
+              onViewDocument={handleViewDocument}
+              onEditDocument={handleEditDocument}
+              onShareDocument={handleShareDocument}
+            />
+          ) : (
+            <DocumentGrid
+              documents={paginatedDocuments}
+              onViewDocument={handleViewDocument}
+              onEditDocument={handleEditDocument}
+              onShareDocument={handleShareDocument}
+            />
+          )}
 
           {/* Pagination */}
           {totalPages > 1 && (

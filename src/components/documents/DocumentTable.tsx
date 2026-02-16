@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { format } from 'date-fns';
-import { FileText, MoreHorizontal, Eye, Edit, Trash2, Share2, GripVertical } from 'lucide-react';
+import { FileText, MoreHorizontal, Eye, Edit, Trash2, Share2, GripVertical, Download } from 'lucide-react';
 import { Document, DocumentSource, DocumentStatus } from '@/types';
 import { useApp } from '@/context/AppContext';
 import {
@@ -67,6 +67,18 @@ function formatFileSize(bytes: number): string {
   if (bytes < 1024) return bytes + ' B';
   if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
   return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+}
+
+function handleDownload(doc: Document) {
+  const blob = new Blob([''], { type: 'application/octet-stream' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = doc.filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 }
 
 export function DocumentTable({
@@ -258,6 +270,10 @@ export function DocumentTable({
                         Share
                       </DropdownMenuItem>
                     )}
+                    <DropdownMenuItem onClick={() => handleDownload(doc)}>
+                      <Download className="mr-2 h-4 w-4" />
+                      Download
+                    </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem 
                       className="text-destructive"
