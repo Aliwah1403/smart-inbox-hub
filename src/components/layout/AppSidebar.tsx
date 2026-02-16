@@ -3,6 +3,7 @@ import {
   FolderPlus, MoreHorizontal, Pencil, Trash2,
   Receipt, FileCheck, BarChart3, Folder, ChevronRight, Pin
 } from 'lucide-react';
+import { Progress } from '@/components/ui/progress';
 import { NavLink, useLocation } from 'react-router-dom';
 import { useState } from 'react';
 import { useApp } from '@/context/AppContext';
@@ -301,15 +302,26 @@ export function AppSidebar() {
 
         <SidebarFooter>
           <div className={cn(
-            "flex items-center gap-3 rounded-lg bg-accent/50 p-3",
-            isCollapsed && "justify-center p-2"
+            "rounded-lg border border-border bg-accent/50 p-3 space-y-2",
+            isCollapsed && "p-2"
           )}>
-            <FileText className="h-5 w-5 text-primary flex-shrink-0" />
-            {!isCollapsed && (
-              <div className="flex-1 min-w-0">
-                <p className="text-xs font-medium truncate">DocBox Pro</p>
-                <p className="text-xs text-muted-foreground truncate">Smart Document Inbox</p>
-              </div>
+            {isCollapsed ? (
+              <FileText className="h-5 w-5 text-primary mx-auto" />
+            ) : (
+              <>
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-semibold">Used space</p>
+                  <span className="text-xs font-medium text-muted-foreground">80%</span>
+                </div>
+                <Progress value={80} className="h-2" />
+                <p className="text-xs text-muted-foreground">
+                  Your team has used 80% of available space.
+                </p>
+                <div className="flex items-center gap-2 text-xs">
+                  <button className="text-muted-foreground hover:text-foreground transition-colors">Dismiss</button>
+                  <button className="text-primary hover:underline font-medium">Upgrade plan</button>
+                </div>
+              </>
             )}
           </div>
         </SidebarFooter>

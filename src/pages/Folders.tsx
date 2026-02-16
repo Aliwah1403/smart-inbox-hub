@@ -6,8 +6,6 @@ import { useFolders, FolderColor } from '@/context/FolderContext';
 import { useApp } from '@/context/AppContext';
 import { FolderCard } from '@/components/folders/FolderCard';
 import { NewFolderCard } from '@/components/folders/NewFolderCard';
-import { StorageOverview } from '@/components/folders/StorageOverview';
-import { RecentActivity } from '@/components/folders/RecentActivity';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -249,11 +247,6 @@ export default function Folders() {
           )}
         </div>
 
-        {/* Right Sidebar */}
-        <div className="hidden xl:block w-80 space-y-6">
-          <StorageOverview documents={documents} folders={foldersWithCounts} />
-          <RecentActivity documents={documents} />
-        </div>
       </div>
 
       {/* New Folder Dialog */}

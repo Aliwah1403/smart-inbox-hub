@@ -1,14 +1,25 @@
 import { useMemo } from 'react';
 import { FileText, Upload, Clock, CheckCircle, AlertCircle, TrendingUp } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
+import { useFolders } from '@/context/FolderContext';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { StorageOverview } from '@/components/folders/StorageOverview';
+import { RecentActivity } from '@/components/folders/RecentActivity';
 import { format, subDays, isAfter } from 'date-fns';
 
 export default function Dashboard() {
   const { documents, user } = useApp();
+  const { folders } = useFolders();
   const isAdmin = user?.role === 'admin';
+
+  const foldersWithCounts = useMemo(() => {
+    return folders.map(folder => ({
+      ...folder,
+      documentCount: folder.id === 'all' ? documents.length : documents.filter(d => d.folderId === folder.id).length,
+    }));
+  }, [folders, documents]);
 
   const stats = useMemo(() => {
     const userDocs = isAdmin ? documents : documents.filter(d => d.uploaderId === user?.id);
@@ -96,53 +107,62 @@ export default function Dashboard() {
           </Card>
         </div>
 
-        {/* Recent documents */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Recent Documents</CardTitle>
-            <CardDescription>Latest uploads to your inbox</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {recentDocuments.map((doc) => (
-                <div
-                  key={doc.id}
-                  className="flex items-center justify-between rounded-lg border border-border p-4"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted">
-                      <FileText className="h-5 w-5 text-muted-foreground" />
-                    </div>
-                    <div>
-                      <p className="font-medium">{doc.title}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {format(doc.uploadDate, 'MMM d, yyyy')} • {doc.uploader}
-                      </p>
-                    </div>
-                  </div>
-                  <Badge
-                    variant="secondary"
-                    className={
-                      doc.status === 'parsed'
-                        ? 'bg-success/10 text-success'
-                        : doc.status === 'needs_review'
-                        ? 'bg-warning/10 text-warning'
-                        : 'bg-muted text-muted-foreground'
-                    }
+        {/* Bottom section: Recent docs + sidebar cards */}
+        <div className="grid gap-6 lg:grid-cols-3">
+          {/* Recent documents */}
+          <Card className="lg:col-span-2">
+            <CardHeader>
+              <CardTitle>Recent Documents</CardTitle>
+              <CardDescription>Latest uploads to your inbox</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {recentDocuments.map((doc) => (
+                  <div
+                    key={doc.id}
+                    className="flex items-center justify-between rounded-lg border border-border p-4"
                   >
-                    {doc.status === 'parsed' ? 'Parsed' : doc.status === 'needs_review' ? 'Review' : 'Processing'}
-                  </Badge>
-                </div>
-              ))}
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted">
+                        <FileText className="h-5 w-5 text-muted-foreground" />
+                      </div>
+                      <div>
+                        <p className="font-medium">{doc.title}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {format(doc.uploadDate, 'MMM d, yyyy')} • {doc.uploader}
+                        </p>
+                      </div>
+                    </div>
+                    <Badge
+                      variant="secondary"
+                      className={
+                        doc.status === 'parsed'
+                          ? 'bg-success/10 text-success'
+                          : doc.status === 'needs_review'
+                          ? 'bg-warning/10 text-warning'
+                          : 'bg-muted text-muted-foreground'
+                      }
+                    >
+                      {doc.status === 'parsed' ? 'Parsed' : doc.status === 'needs_review' ? 'Review' : 'Processing'}
+                    </Badge>
+                  </div>
+                ))}
 
-              {recentDocuments.length === 0 && (
-                <div className="py-8 text-center text-muted-foreground">
-                  No documents yet. Upload your first document to get started.
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
+                {recentDocuments.length === 0 && (
+                  <div className="py-8 text-center text-muted-foreground">
+                    No documents yet. Upload your first document to get started.
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Right sidebar cards */}
+          <div className="space-y-6">
+            <StorageOverview documents={documents} folders={foldersWithCounts} />
+            <RecentActivity documents={documents} />
+          </div>
+        </div>
       </div>
     </AppLayout>
   );
