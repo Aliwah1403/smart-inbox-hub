@@ -16,16 +16,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
+import { PermanentDeleteDialog } from '@/components/trash/PermanentDeleteDialog';
 import { toast } from 'sonner';
 
 const TRASH_RETENTION_DAYS = 30;
@@ -436,80 +427,39 @@ export default function Trash() {
         )}
 
         {/* Document Permanent Delete Confirmation */}
-        <AlertDialog open={deleteDocDialogOpen} onOpenChange={setDeleteDocDialogOpen}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle className="flex items-center gap-2">
-                <AlertTriangle className="h-5 w-5 text-destructive" />
-                Delete Forever?
-              </AlertDialogTitle>
-              <AlertDialogDescription>
-                {selectedDocIds.length === 1
-                  ? 'This document will be permanently deleted. This action cannot be undone.'
-                  : `${selectedDocIds.length} documents will be permanently deleted. This action cannot be undone.`}
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction
-                onClick={handlePermanentDeleteDocs}
-                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              >
-                Delete Forever
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+        <PermanentDeleteDialog
+          open={deleteDocDialogOpen}
+          onOpenChange={setDeleteDocDialogOpen}
+          onConfirm={handlePermanentDeleteDocs}
+          title="Delete Forever?"
+          description={
+            selectedDocIds.length === 1
+              ? 'This document will be permanently deleted. This action cannot be undone.'
+              : `${selectedDocIds.length} documents will be permanently deleted. This action cannot be undone.`
+          }
+        />
 
         {/* Folder Permanent Delete Confirmation */}
-        <AlertDialog open={deleteFolderDialogOpen} onOpenChange={setDeleteFolderDialogOpen}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle className="flex items-center gap-2">
-                <AlertTriangle className="h-5 w-5 text-destructive" />
-                Delete Forever?
-              </AlertDialogTitle>
-              <AlertDialogDescription>
-                {selectedFolderIds.length === 1
-                  ? 'This folder will be permanently deleted. This action cannot be undone.'
-                  : `${selectedFolderIds.length} folders will be permanently deleted. This action cannot be undone.`}
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction
-                onClick={handlePermanentDeleteFolders}
-                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              >
-                Delete Forever
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+        <PermanentDeleteDialog
+          open={deleteFolderDialogOpen}
+          onOpenChange={setDeleteFolderDialogOpen}
+          onConfirm={handlePermanentDeleteFolders}
+          title="Delete Forever?"
+          description={
+            selectedFolderIds.length === 1
+              ? 'This folder will be permanently deleted. This action cannot be undone.'
+              : `${selectedFolderIds.length} folders will be permanently deleted. This action cannot be undone.`
+          }
+        />
 
         {/* Empty Trash Confirmation */}
-        <AlertDialog open={emptyTrashDialogOpen} onOpenChange={setEmptyTrashDialogOpen}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle className="flex items-center gap-2">
-                <AlertTriangle className="h-5 w-5 text-destructive" />
-                Empty Trash?
-              </AlertDialogTitle>
-              <AlertDialogDescription>
-                All {totalTrashedItems} item{totalTrashedItems !== 1 ? 's' : ''} ({trashedDocuments.length} document{trashedDocuments.length !== 1 ? 's' : ''}, {trashedFolders.length} folder{trashedFolders.length !== 1 ? 's' : ''}) will be permanently deleted. This action cannot be undone.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction
-                onClick={handleEmptyTrash}
-                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              >
-                Empty Trash
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+        <PermanentDeleteDialog
+          open={emptyTrashDialogOpen}
+          onOpenChange={setEmptyTrashDialogOpen}
+          onConfirm={handleEmptyTrash}
+          title="Empty Trash?"
+          description={`All ${totalTrashedItems} item${totalTrashedItems !== 1 ? 's' : ''} (${trashedDocuments.length} document${trashedDocuments.length !== 1 ? 's' : ''}, ${trashedFolders.length} folder${trashedFolders.length !== 1 ? 's' : ''}) will be permanently deleted. This action cannot be undone.`}
+        />
       </div>
     </AppLayout>
   );
