@@ -30,6 +30,7 @@ export interface Document {
   fileType: string;
   aiSummary?: string;
   extractedFields?: Record<string, string>;
+  storagePath?: string;
   previewUrl?: string;
   isStarred?: boolean;
   isTrashed?: boolean;
