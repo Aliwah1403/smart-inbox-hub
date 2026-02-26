@@ -12,9 +12,8 @@ import {
 } from 'lucide-react';
 import { mockIntegrations } from '@/data/mockData';
 import { AppLayout } from '@/components/layout/AppLayout';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import {
   Dialog,
   DialogContent,
@@ -27,9 +26,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { cn } from '@/lib/utils';
 import { WhatsAppIntegration } from '@/components/integrations/WhatsAppIntegration';
 import { Separator } from '@/components/ui/separator';
+import { Badge } from '@/components/ui/badge';
 
 const iconMap: Record<string, typeof Mail> = {
   Mail,
@@ -51,78 +50,72 @@ type IntegrationCardProps = {
 function IntegrationCard({ id, name, description, type, status, icon }: IntegrationCardProps) {
   const Icon = iconMap[icon] || Link2;
   const isConnected = status === 'connected';
+  const url = `https://${name.toLowerCase().replace(/\s+/g, '')}.com`;
 
   return (
-    <Card className="group border-border/60 bg-card/90 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
-      <CardHeader className="pb-3">
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-muted/70">
-              <Icon className="h-5 w-5 text-muted-foreground" />
-            </div>
-            <div>
-              <CardTitle className="text-base">{name}</CardTitle>
-              <CardDescription className="capitalize">{type.replace('_', ' ')}</CardDescription>
+    <Card className="border-border/60 bg-card shadow-sm">
+      <CardHeader className="space-y-3 pb-4">
+        <div className="flex items-center gap-3">
+          <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-border bg-muted/40">
+            <Icon className="h-5 w-5 text-muted-foreground" />
+          </div>
+          <div>
+            <CardTitle className="text-base">{name}</CardTitle>
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <Link2 className="h-3.5 w-3.5" />
+              <span className="truncate">{url}</span>
             </div>
           </div>
-          <Badge
-            variant="secondary"
-            className={cn(
-              'gap-1 rounded-full px-2.5 py-1 text-xs',
-              isConnected ? 'bg-success/10 text-success' : 'bg-muted text-muted-foreground',
-            )}
-          >
-            {isConnected ? (
-              <>
-                <CheckCircle className="h-3 w-3" /> Connected
-              </>
-            ) : (
-              <>
-                <XCircle className="h-3 w-3" /> Not connected
-              </>
-            )}
-          </Badge>
         </div>
+        <CardDescription className="text-sm">{description}</CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4">
-        <p className="text-sm text-muted-foreground">{description}</p>
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <Dialog>
-              <DialogTrigger asChild>
-                <Button variant="outline" size="sm">
-                  Details
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>{name} integration</DialogTitle>
-                  <DialogDescription>Connection flow and permissions overview.</DialogDescription>
-                </DialogHeader>
-                <div className="flex items-start gap-3 rounded-lg bg-muted p-4">
-                  <Info className="mt-0.5 h-5 w-5 text-muted-foreground" />
-                  <div className="text-sm">
-                    <p className="font-medium">OAuth Integration</p>
-                    <p className="text-muted-foreground">
-                      This integration will use OAuth authentication to securely sync documents and metadata.
-                    </p>
-                  </div>
-                </div>
-              </DialogContent>
-            </Dialog>
-          
-            <Button variant={isConnected ? 'secondary' : 'default'} size="sm">
-              {isConnected ? 'Remove' : 'Connect'}
-            </Button>
-          </div>
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <span>Sync</span>
-            <Switch defaultChecked={isConnected} aria-label={`${name} sync`} />
-          </div>
+      <CardContent className="pt-0">
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <span className="inline-flex h-6 items-center rounded-full border border-border px-2 capitalize">
+            {type.replace('_', ' ')}
+          </span>
+          {isConnected ? (
+            <span className="inline-flex items-center gap-1 rounded-full bg-success/10 px-2 text-success">
+              <CheckCircle className="h-3 w-3" /> Connected
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2">
+              <XCircle className="h-3 w-3" /> Not connected
+            </span>
+          )}
         </div>
       </CardContent>
-      
-      <div className="h-1 w-full rounded-b-lg bg-gradient-to-r from-transparent via-primary/10 to-transparent opacity-0 transition group-hover:opacity-100" />
+      <Separator />
+      <CardFooter className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <Dialog>
+            <DialogTrigger asChild>
+              <Button variant="outline" size="sm">
+                Integration Detail
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>{name} integration</DialogTitle>
+                <DialogDescription>Connection flow and permissions overview.</DialogDescription>
+              </DialogHeader>
+              <div className="flex items-start gap-3 rounded-lg bg-muted p-4">
+                <Info className="mt-0.5 h-5 w-5 text-muted-foreground" />
+                <div className="text-sm">
+                  <p className="font-medium">OAuth Integration</p>
+                  <p className="text-muted-foreground">
+                    This integration will use OAuth authentication to securely sync documents and metadata.
+                  </p>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
+          <Button variant="outline" size="sm" className="text-destructive hover:text-destructive">
+            Remove
+          </Button>
+        </div>
+        <Switch defaultChecked={isConnected} aria-label={`${name} sync`} />
+      </CardFooter>
       <div className="sr-only" id={`integration-${id}`}>{`${name} integration card`}</div>
     </Card>
   );
@@ -176,7 +169,7 @@ export default function Integrations() {
   return (
     <AppLayout>
       <div className="space-y-8">
-        <section className="rounded-2xlp-6 shadow-sm">
+        <section className="rounded-2xl border border-border/60 bg-card/95 p-6 shadow-sm">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div>
               <h1 className="text-2xl font-semibold">Integrations</h1>

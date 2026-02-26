@@ -18,7 +18,7 @@
 
 @layer base {
   :root {
-    --background: 0 0% 98.0387%;
+    --background: 0 0% 100%;
     --foreground: 0 0% 0%;
 
     --card: 300 50% 100.0000%;
@@ -54,7 +54,7 @@
 
     --radius: 0.5rem;
 
-    --sidebar-background: 0 0% 100%;
+    --sidebar-background: 0 0% 96%;
     --sidebar-foreground: 300 0.0000% 9.0173%;
     --sidebar-primary: 225.7181 51.8947% 50.4104%;
     --sidebar-primary-foreground: 300 50% 100.0000%;
@@ -72,7 +72,7 @@
     --chart-3: 229.0878 49.7479% 60.9807%;
     --chart-4: 225.7181 51.8947% 50.4104%;
     --chart-5: 236.5829 64.2250% 21.4383%;
-    --sidebar: 300 50% 100.0000%;
+    --sidebar: 0 0% 96%;
     --font-sans: Inter, ui-sans-serif, system-ui, sans-serif, Apple Color Emoji, Segoe UI Emoji, Segoe UI Symbol, Noto Color Emoji;
     --font-serif: Lora, ui-serif, Georgia, Cambria, Times New Roman, Times, serif;
     --font-mono: "Space Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono, Courier New, monospace;
