@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { User, Mail, Shield } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { Role } from '@/types';
@@ -16,9 +17,16 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
+import { toast } from 'sonner';
 
 export default function Profile() {
-  const { user, setUserRole } = useApp();
+  const { user, setUserRole, updateProfile } = useApp();
+  const [fullName, setFullName] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    setFullName(user?.name || '');
+  }, [user]);
 
   const getInitials = (name: string) => {
     return name
@@ -71,15 +79,29 @@ export default function Profile() {
             <div className="grid gap-4">
               <div className="grid gap-2">
                 <Label htmlFor="name">Full name</Label>
-                <Input id="name" defaultValue={user?.name} />
+                <Input id="name" value={fullName} onChange={(e) => setFullName(e.target.value)} />
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="email">Email address</Label>
-                <Input id="email" type="email" defaultValue={user?.email} />
+                <Input id="email" type="email" value={user?.email || ''} disabled />
               </div>
             </div>
 
-            <Button>Save changes</Button>
+            <Button
+              disabled={isSaving || !fullName.trim() || fullName.trim() === user?.name}
+              onClick={async () => {
+                setIsSaving(true);
+                const success = await updateProfile(fullName);
+                setIsSaving(false);
+                if (success) {
+                  toast.success('Profile updated');
+                } else {
+                  toast.error('Could not update profile');
+                }
+              }}
+            >
+              {isSaving ? 'Saving...' : 'Save changes'}
+            </Button>
           </CardContent>
         </Card>
 

@@ -14,6 +14,7 @@ interface AppContextType {
   signup: (email: string, password: string, name: string) => Promise<boolean>;
   logout: () => Promise<void>;
   setUserRole: (role: Role) => Promise<void>;
+  updateProfile: (fullName: string) => Promise<boolean>;
   addDocuments: (docs: Document[]) => Promise<void>;
   updateDocument: (id: string, updates: Partial<Document>) => Promise<void>;
   deleteDocuments: (ids: string[]) => Promise<void>;
@@ -116,6 +117,31 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [allDocuments, setAllDocuments] = useState<Document[]>([]);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
 
+  const resolveUploaderNames = useCallback(async (rows: DocumentRow[]) => {
+    const uploaderIds = Array.from(new Set(rows.map((row) => row.uploader_id).filter(Boolean)));
+    if (uploaderIds.length === 0) {
+      return new Map<string, string>();
+    }
+
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('id, full_name')
+      .in('id', uploaderIds);
+
+    if (error) {
+      // If RLS is restrictive, fallback labels are used.
+      return new Map<string, string>();
+    }
+
+    const nameMap = new Map<string, string>();
+    for (const profile of data || []) {
+      if (profile.id && profile.full_name) {
+        nameMap.set(profile.id, profile.full_name);
+      }
+    }
+    return nameMap;
+  }, []);
+
   const loadDocuments = useCallback(async (currentUser: User | null) => {
     if (!currentUser) {
       setAllDocuments([]);
@@ -132,9 +158,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    const mapped = ((data || []) as DocumentRow[]).map((row) => mapDocumentRow(row, currentUser));
+    const rows = (data || []) as DocumentRow[];
+    const uploaderNameMap = await resolveUploaderNames(rows);
+    const mapped = rows.map((row) => {
+      const doc = mapDocumentRow(row, currentUser);
+      if (row.uploader_id === currentUser.id) {
+        doc.uploader = currentUser.name;
+      } else if (uploaderNameMap.has(row.uploader_id)) {
+        doc.uploader = uploaderNameMap.get(row.uploader_id)!;
+      }
+      return doc;
+    });
     setAllDocuments(mapped);
-  }, []);
+  }, [resolveUploaderNames]);
 
   const resolveUserFromSession = useCallback(async (session: Session | null): Promise<User | null> => {
     const authUser = session?.user;
@@ -190,6 +226,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
     };
   }, [loadDocuments, resolveUserFromSession]);
 
+  useEffect(() => {
+    if (!user) return;
+
+    const channel = supabase
+      .channel(`documents-live-${user.id}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'documents' },
+        async () => {
+          await loadDocuments(user);
+        },
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user, loadDocuments]);
+
   const login = async (email: string, password: string): Promise<boolean> => {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) {
@@ -221,6 +276,28 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
 
     setUser((prev) => (prev ? { ...prev, role } : prev));
+  };
+
+  const updateProfile = async (fullName: string): Promise<boolean> => {
+    if (!user) return false;
+
+    const sanitizedName = fullName.trim();
+    if (!sanitizedName) return false;
+
+    const { error } = await supabase
+      .from('profiles')
+      .update({ full_name: sanitizedName })
+      .eq('id', user.id);
+
+    if (error) {
+      console.error('Failed to update profile', error.message);
+      return false;
+    }
+
+    const nextUser = { ...user, name: sanitizedName };
+    setUser(nextUser);
+    await loadDocuments(nextUser);
+    return true;
   };
 
   const addDocuments = async (docs: Document[]) => {
@@ -379,6 +456,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         signup,
         logout,
         setUserRole,
+        updateProfile,
         addDocuments,
         updateDocument,
         deleteDocuments,
