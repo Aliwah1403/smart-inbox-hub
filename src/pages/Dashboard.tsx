@@ -12,7 +12,6 @@ import { format, subDays, isAfter } from 'date-fns';
 export default function Dashboard() {
   const { documents, user } = useApp();
   const { folders } = useFolders();
-  const isAdmin = user?.role === 'admin';
 
   const foldersWithCounts = useMemo(() => {
     return folders.map(folder => ({
@@ -22,7 +21,7 @@ export default function Dashboard() {
   }, [folders, documents]);
 
   const stats = useMemo(() => {
-    const userDocs = isAdmin ? documents : documents.filter(d => d.uploaderId === user?.id);
+    const userDocs = documents;
     const last7Days = subDays(new Date(), 7);
     const recentDocs = userDocs.filter(d => isAfter(d.uploadDate, last7Days));
     
@@ -33,14 +32,13 @@ export default function Dashboard() {
       processing: userDocs.filter(d => d.status === 'processing').length,
       thisWeek: recentDocs.length,
     };
-  }, [documents, isAdmin, user]);
+  }, [documents]);
 
   const recentDocuments = useMemo(() => {
-    const userDocs = isAdmin ? documents : documents.filter(d => d.uploaderId === user?.id);
-    return userDocs
+    return [...documents]
       .sort((a, b) => b.uploadDate.getTime() - a.uploadDate.getTime())
       .slice(0, 5);
-  }, [documents, isAdmin, user]);
+  }, [documents]);
 
   return (
     <AppLayout>

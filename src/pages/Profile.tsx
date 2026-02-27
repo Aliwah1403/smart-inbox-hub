@@ -128,8 +128,8 @@ export default function Profile() {
               </Select>
               <p className="text-xs text-muted-foreground">
                 {user?.role === 'admin' 
-                  ? 'As Admin, you can see all documents and access settings.' 
-                  : 'As Staff, you can only see your own documents.'}
+                  ? 'As Admin, you can access settings and full workspace controls.' 
+                  : 'As Staff, you can collaborate across shared workspace documents.'}
               </p>
             </div>
           </CardContent>

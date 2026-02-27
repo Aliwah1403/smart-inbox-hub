@@ -47,17 +47,11 @@ export default function Documents() {
     }
   }, []);
 
-  const isAdmin = user?.role === 'admin';
   const currentFolder = folders.find(f => f.id === selectedFolderId);
 
   // Filter documents based on role, folder, and filters
   const filteredDocuments = useMemo(() => {
     let docs = documents;
-
-    // Staff can only see their own documents
-    if (!isAdmin && user) {
-      docs = docs.filter(d => d.uploaderId === user.id);
-    }
 
     // Filter by selected folder
     if (selectedFolderId && selectedFolderId !== 'all') {
@@ -99,7 +93,7 @@ export default function Documents() {
     }
 
     return docs;
-  }, [documents, filters, isAdmin, user, selectedFolderId]);
+  }, [documents, filters, selectedFolderId]);
 
   // Paginate
   const paginatedDocuments = useMemo(() => {
@@ -136,7 +130,6 @@ export default function Documents() {
               </h1>
               <p className="text-muted-foreground">
                 {filteredDocuments.length} documents
-                {!isAdmin && ' (showing your uploads)'}
               </p>
             </div>
             <div className="flex items-center gap-2">
@@ -159,7 +152,7 @@ export default function Documents() {
           <DocumentFilters filters={filters} onFiltersChange={setFilters} />
 
           {/* Batch actions (Admin only) */}
-          {isAdmin && (
+          {user?.role === 'admin' && (
             <BatchActions 
               selectedIds={selectedIds} 
               onClearSelection={() => setSelectedIds([])} 

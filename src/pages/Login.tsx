@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { FileText, Mail, Lock, ArrowRight } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
@@ -8,20 +8,30 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 
 export default function Login() {
-  const [email, setEmail] = useState('admin@company.com');
-  const [password, setPassword] = useState('password');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [errorMessage, setErrorMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const { login } = useApp();
+  const { login, isAuthenticated, isAuthLoading } = useApp();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!isAuthLoading && isAuthenticated) {
+      navigate('/documents', { replace: true });
+    }
+  }, [isAuthenticated, isAuthLoading, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    setErrorMessage('');
     
     const success = await login(email, password);
     
     if (success) {
       navigate('/documents');
+    } else {
+      setErrorMessage('Invalid email or password. Please try again.');
     }
     
     setIsLoading(false);
@@ -80,9 +90,11 @@ export default function Login() {
                   />
                 </div>
               </div>
-              <p className="rounded-lg bg-muted p-3 text-xs text-muted-foreground">
-                <strong>Demo:</strong> Use <code className="rounded bg-background px-1">admin@company.com</code> for admin access or any email for staff access.
-              </p>
+              {errorMessage && (
+                <p className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive">
+                  {errorMessage}
+                </p>
+              )}
             </CardContent>
             <CardFooter className="flex flex-col gap-4">
               <Button type="submit" className="w-full" disabled={isLoading}>
@@ -99,9 +111,9 @@ export default function Login() {
                 )}
               </Button>
               <p className="text-center text-sm text-muted-foreground">
-                Don't have an account?{' '}
+                Need access?{' '}
                 <Link to="/signup" className="font-medium text-primary hover:underline">
-                  Sign up
+                  Contact admin
                 </Link>
               </p>
             </CardFooter>
