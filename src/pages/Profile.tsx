@@ -1,6 +1,8 @@
+import { useEffect, useState } from 'react';
 import { User, Mail, Shield } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { Role } from '@/types';
+import { useProfileQuery, useUpdateProfileMutation } from '@/hooks/queries/useAuthQueries';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
@@ -16,9 +18,19 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
+import { toast } from 'sonner';
 
 export default function Profile() {
   const { user, setUserRole } = useApp();
+  const [fullName, setFullName] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
+  const profileQuery = useProfileQuery(user?.id);
+  const updateProfileMutation = useUpdateProfileMutation(user?.id);
+
+  useEffect(() => {
+    const nextName = profileQuery.data?.full_name || user?.name || '';
+    setFullName(nextName);
+  }, [profileQuery.data?.full_name, user?.name]);
 
   const getInitials = (name: string) => {
     return name
@@ -71,15 +83,35 @@ export default function Profile() {
             <div className="grid gap-4">
               <div className="grid gap-2">
                 <Label htmlFor="name">Full name</Label>
-                <Input id="name" defaultValue={user?.name} />
+                <Input id="name" value={fullName} onChange={(e) => setFullName(e.target.value)} />
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="email">Email address</Label>
-                <Input id="email" type="email" defaultValue={user?.email} />
+                <Input id="email" type="email" value={user?.email || ''} disabled />
               </div>
             </div>
 
-            <Button>Save changes</Button>
+            <Button
+              disabled={isSaving || !fullName.trim() || fullName.trim() === (profileQuery.data?.full_name || user?.name || '')}
+              onClick={async () => {
+                setIsSaving(true);
+                let success = false;
+                try {
+                  await updateProfileMutation.mutateAsync(fullName.trim());
+                  success = true;
+                } catch {
+                  success = false;
+                }
+                setIsSaving(false);
+                if (success) {
+                  toast.success('Profile updated');
+                } else {
+                  toast.error('Could not update profile');
+                }
+              }}
+            >
+              {isSaving ? 'Saving...' : 'Save changes'}
+            </Button>
           </CardContent>
         </Card>
 

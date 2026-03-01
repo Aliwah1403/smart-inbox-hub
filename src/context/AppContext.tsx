@@ -1,7 +1,27 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, ReactNode } from 'react';
-import { Session, User as SupabaseUser } from '@supabase/supabase-js';
+import { createContext, useContext, useEffect, ReactNode } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { Document, Role, User } from '@/types';
 import { supabase } from '@/integrations/supabase/client';
+import { mapSupabaseUser, ProfileRow } from '@/integrations/supabase/api';
+import { queryKeys } from '@/lib/queryKeys';
+import {
+  useLoginMutation,
+  useLogoutMutation,
+  useProfileQuery,
+  useSessionQuery,
+  useSetRoleMutation,
+  useUpdateProfileMutation,
+} from '@/hooks/queries/useAuthQueries';
+import {
+  useAddDocumentsMutation,
+  useDeleteDocumentsMutation,
+  useDocumentsQuery,
+  useMoveDocumentsToFolderMutation,
+  useRestoreDocumentsMutation,
+  useToggleStarDocumentMutation,
+  useTrashDocumentsMutation,
+  useUpdateDocumentMutation,
+} from '@/hooks/queries/useDocumentQueries';
 
 interface AppContextType {
   user: User | null;
@@ -14,6 +34,7 @@ interface AppContextType {
   signup: (email: string, password: string, name: string) => Promise<boolean>;
   logout: () => Promise<void>;
   setUserRole: (role: Role) => Promise<void>;
+  updateProfile: (fullName: string) => Promise<boolean>;
   addDocuments: (docs: Document[]) => Promise<void>;
   updateDocument: (id: string, updates: Partial<Document>) => Promise<void>;
   deleteDocuments: (ids: string[]) => Promise<void>;
@@ -24,179 +45,71 @@ interface AppContextType {
   permanentlyDeleteDocuments: (ids: string[]) => Promise<void>;
 }
 
-type DocumentRow = {
-  id: string;
-  filename: string;
-  title: string;
-  upload_date: string;
-  uploader_id: string;
-  source: Document['source'];
-  status: Document['status'];
-  tags: string[] | null;
-  category: string | null;
-  folder_id: string | null;
-  file_size: number;
-  file_type: string;
-  ai_summary: string | null;
-  extracted_fields: Record<string, string> | null;
-  storage_path: string | null;
-  preview_url: string | null;
-  is_starred: boolean | null;
-  is_trashed: boolean | null;
-  trashed_at: string | null;
-};
-
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
-function mapSupabaseUser(authUser: SupabaseUser, profile: { full_name: string | null; role: Role | null } | null): User {
-  const email = authUser.email || '';
-  const fallbackName = email.includes('@') ? email.split('@')[0] : 'User';
-
-  return {
-    id: authUser.id,
-    email,
-    name: profile?.full_name || fallbackName,
-    role: profile?.role || 'staff',
-  };
-}
-
-function mapDocumentRow(row: DocumentRow, currentUser: User | null): Document {
-  const fallbackUploader = row.uploader_id === currentUser?.id ? currentUser.name : 'Team Member';
-
-  return {
-    id: row.id,
-    filename: row.filename,
-    title: row.title,
-    uploadDate: new Date(row.upload_date),
-    uploader: fallbackUploader,
-    uploaderId: row.uploader_id,
-    source: row.source,
-    status: row.status,
-    tags: row.tags || [],
-    category: row.category || undefined,
-    folderId: row.folder_id || undefined,
-    fileSize: row.file_size,
-    fileType: row.file_type,
-    aiSummary: row.ai_summary || undefined,
-    extractedFields: row.extracted_fields || undefined,
-    storagePath: row.storage_path || undefined,
-    previewUrl: row.preview_url || undefined,
-    isStarred: row.is_starred || false,
-    isTrashed: row.is_trashed || false,
-    trashedAt: row.trashed_at ? new Date(row.trashed_at) : undefined,
-  };
-}
-
-function mapDocumentUpdates(updates: Partial<Document>) {
-  const payload: Record<string, unknown> = {};
-
-  if (updates.filename !== undefined) payload.filename = updates.filename;
-  if (updates.title !== undefined) payload.title = updates.title;
-  if (updates.uploadDate !== undefined) payload.upload_date = updates.uploadDate.toISOString();
-  if (updates.source !== undefined) payload.source = updates.source;
-  if (updates.status !== undefined) payload.status = updates.status;
-  if (updates.tags !== undefined) payload.tags = updates.tags;
-  if (updates.category !== undefined) payload.category = updates.category || null;
-  if (updates.folderId !== undefined) payload.folder_id = updates.folderId || null;
-  if (updates.fileSize !== undefined) payload.file_size = updates.fileSize;
-  if (updates.fileType !== undefined) payload.file_type = updates.fileType;
-  if (updates.aiSummary !== undefined) payload.ai_summary = updates.aiSummary || null;
-  if (updates.extractedFields !== undefined) payload.extracted_fields = updates.extractedFields || null;
-  if (updates.storagePath !== undefined) payload.storage_path = updates.storagePath || null;
-  if (updates.previewUrl !== undefined) payload.preview_url = updates.previewUrl || null;
-  if (updates.isStarred !== undefined) payload.is_starred = updates.isStarred;
-  if (updates.isTrashed !== undefined) payload.is_trashed = updates.isTrashed;
-  if (updates.trashedAt !== undefined) payload.trashed_at = updates.trashedAt ? updates.trashedAt.toISOString() : null;
-
-  return payload;
-}
-
 export function AppProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [allDocuments, setAllDocuments] = useState<Document[]>([]);
-  const [isAuthLoading, setIsAuthLoading] = useState(true);
+  const queryClient = useQueryClient();
 
-  const loadDocuments = useCallback(async (currentUser: User | null) => {
-    if (!currentUser) {
-      setAllDocuments([]);
-      return;
-    }
+  const sessionQuery = useSessionQuery();
+  const authUser = sessionQuery.data?.user || null;
 
-    const { data, error } = await supabase
-      .from('documents')
-      .select('*')
-      .order('upload_date', { ascending: false });
+  const profileQuery = useProfileQuery(authUser?.id);
 
-    if (error) {
-      console.error('Failed to load documents', error.message);
-      return;
-    }
+  const user = authUser ? mapSupabaseUser(authUser, (profileQuery.data as ProfileRow | null) || null) : null;
 
-    const mapped = ((data || []) as DocumentRow[]).map((row) => mapDocumentRow(row, currentUser));
-    setAllDocuments(mapped);
-  }, []);
+  const documentsQuery = useDocumentsQuery(user);
+  const allDocuments = documentsQuery.data || [];
 
-  const resolveUserFromSession = useCallback(async (session: Session | null): Promise<User | null> => {
-    const authUser = session?.user;
-    if (!authUser) return null;
+  const loginMutation = useLoginMutation();
+  const logoutMutation = useLogoutMutation();
+  const setRoleMutation = useSetRoleMutation(user?.id);
+  const updateProfileMutation = useUpdateProfileMutation(user?.id);
 
-    const { data: profile, error } = await supabase
-      .from('profiles')
-      .select('full_name, role')
-      .eq('id', authUser.id)
-      .maybeSingle();
-
-    if (error) {
-      console.warn('Failed to load profile, using defaults:', error.message);
-    }
-
-    return mapSupabaseUser(
-      authUser,
-      (profile as { full_name: string | null; role: Role | null } | null) || null,
-    );
-  }, []);
+  const addDocumentsMutation = useAddDocumentsMutation(user?.id);
+  const updateDocumentMutation = useUpdateDocumentMutation();
+  const deleteDocumentsMutation = useDeleteDocumentsMutation();
+  const moveDocumentsMutation = useMoveDocumentsToFolderMutation();
+  const toggleStarMutation = useToggleStarDocumentMutation();
+  const trashDocumentsMutation = useTrashDocumentsMutation();
+  const restoreDocumentsMutation = useRestoreDocumentsMutation();
 
   useEffect(() => {
-    let mounted = true;
-
-    const syncSession = async (session: Session | null) => {
-      const resolvedUser = await resolveUserFromSession(session);
-      if (!mounted) return;
-
-      setUser(resolvedUser);
-      await loadDocuments(resolvedUser);
-      if (mounted) {
-        setIsAuthLoading(false);
-      }
-    };
-
-    supabase.auth
-      .getSession()
-      .then(({ data }) => syncSession(data.session))
-      .catch((error) => {
-        console.error('Failed to read auth session', error);
-        if (mounted) setIsAuthLoading(false);
-      });
-
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      syncSession(session);
+    } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      queryClient.setQueryData(queryKeys.auth.session(), session);
+      await queryClient.invalidateQueries({ queryKey: queryKeys.auth.profile() });
+      await queryClient.invalidateQueries({ queryKey: queryKeys.documents.all });
     });
 
     return () => {
-      mounted = false;
       subscription.unsubscribe();
     };
-  }, [loadDocuments, resolveUserFromSession]);
+  }, [queryClient]);
+
+  useEffect(() => {
+    if (!user) return;
+
+    const channel = supabase
+      .channel(`documents-live-${user.id}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'documents' }, async () => {
+        await queryClient.invalidateQueries({ queryKey: queryKeys.documents.all });
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [queryClient, user]);
 
   const login = async (email: string, password: string): Promise<boolean> => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) {
-      console.error('Login failed:', error.message);
+    try {
+      await loginMutation.mutateAsync({ email, password });
+      return true;
+    } catch (error) {
+      console.error('Login failed:', error);
       return false;
     }
-    return true;
   };
 
   const signup = async (_email: string, _password: string, _name: string): Promise<boolean> => {
@@ -205,180 +118,115 @@ export function AppProvider({ children }: { children: ReactNode }) {
   };
 
   const logout = async () => {
-    const { error } = await supabase.auth.signOut();
-    if (error) {
-      console.error('Logout failed:', error.message);
+    try {
+      await logoutMutation.mutateAsync();
+    } catch (error) {
+      console.error('Logout failed:', error);
     }
   };
 
   const setUserRole = async (role: Role) => {
-    if (!user) return;
-
-    const { error } = await supabase.from('profiles').update({ role }).eq('id', user.id);
-    if (error) {
-      console.error('Failed to update role', error.message);
-      return;
+    try {
+      await setRoleMutation.mutateAsync(role);
+    } catch (error) {
+      console.error('Failed to update role', error);
     }
+  };
 
-    setUser((prev) => (prev ? { ...prev, role } : prev));
+  const updateProfile = async (fullName: string): Promise<boolean> => {
+    const sanitizedName = fullName.trim();
+    if (!sanitizedName) return false;
+
+    try {
+      await updateProfileMutation.mutateAsync(sanitizedName);
+      return true;
+    } catch (error) {
+      console.error('Failed to update profile', error);
+      return false;
+    }
   };
 
   const addDocuments = async (docs: Document[]) => {
-    if (!user || docs.length === 0) return;
-
-    const payload = docs.map((doc) => ({
-      filename: doc.filename,
-      title: doc.title,
-      upload_date: (doc.uploadDate || new Date()).toISOString(),
-      uploader_id: user.id,
-      source: doc.source,
-      status: doc.status,
-      tags: doc.tags || [],
-      category: doc.category || null,
-      folder_id: doc.folderId || null,
-      file_size: doc.fileSize,
-      file_type: doc.fileType || 'application/octet-stream',
-      ai_summary: doc.aiSummary || null,
-      extracted_fields: doc.extractedFields || null,
-      storage_path: doc.storagePath || null,
-      preview_url: doc.previewUrl || null,
-      is_starred: doc.isStarred || false,
-      is_trashed: doc.isTrashed || false,
-      trashed_at: doc.trashedAt ? doc.trashedAt.toISOString() : null,
-    }));
-
-    const { error } = await supabase.from('documents').insert(payload);
-    if (error) {
-      console.error('Failed to add documents', error.message);
-      return;
+    try {
+      await addDocumentsMutation.mutateAsync(docs);
+    } catch (error) {
+      console.error('Failed to add documents', error);
     }
-
-    await loadDocuments(user);
   };
 
   const updateDocument = async (id: string, updates: Partial<Document>) => {
-    const payload = mapDocumentUpdates(updates);
-    if (Object.keys(payload).length === 0 || !user) return;
-
-    const { error } = await supabase.from('documents').update(payload).eq('id', id);
-    if (error) {
-      console.error('Failed to update document', error.message);
-      return;
+    try {
+      await updateDocumentMutation.mutateAsync({ id, updates });
+    } catch (error) {
+      console.error('Failed to update document', error);
     }
-
-    await loadDocuments(user);
   };
 
   const deleteDocuments = async (ids: string[]) => {
-    if (!user || ids.length === 0) return;
-
-    const { error } = await supabase.from('documents').delete().in('id', ids);
-    if (error) {
-      console.error('Failed to delete documents', error.message);
-      return;
+    try {
+      await deleteDocumentsMutation.mutateAsync(ids);
+    } catch (error) {
+      console.error('Failed to delete documents', error);
     }
-
-    await loadDocuments(user);
   };
 
   const moveDocumentsToFolder = async (documentIds: string[], folderId: string) => {
-    if (!user || documentIds.length === 0) return;
-
-    const { error } = await supabase
-      .from('documents')
-      .update({ folder_id: folderId === 'all' ? null : folderId })
-      .in('id', documentIds);
-
-    if (error) {
-      console.error('Failed to move documents', error.message);
-      return;
+    try {
+      await moveDocumentsMutation.mutateAsync({ documentIds, folderId });
+    } catch (error) {
+      console.error('Failed to move documents', error);
     }
-
-    await loadDocuments(user);
   };
 
   const toggleStarDocument = async (id: string) => {
-    if (!user) return;
+    const doc = allDocuments.find((item) => item.id === id);
+    if (!doc) return;
 
-    const document = allDocuments.find((doc) => doc.id === id);
-    if (!document) return;
-
-    const { error } = await supabase
-      .from('documents')
-      .update({ is_starred: !document.isStarred })
-      .eq('id', id);
-
-    if (error) {
-      console.error('Failed to toggle star', error.message);
-      return;
+    try {
+      await toggleStarMutation.mutateAsync({ id, isStarred: !!doc.isStarred });
+    } catch (error) {
+      console.error('Failed to toggle star', error);
     }
-
-    await loadDocuments(user);
   };
 
   const trashDocuments = async (ids: string[]) => {
-    if (!user || ids.length === 0) return;
-
-    const { error } = await supabase
-      .from('documents')
-      .update({
-        is_trashed: true,
-        is_starred: false,
-        trashed_at: new Date().toISOString(),
-      })
-      .in('id', ids);
-
-    if (error) {
-      console.error('Failed to trash documents', error.message);
-      return;
+    try {
+      await trashDocumentsMutation.mutateAsync(ids);
+    } catch (error) {
+      console.error('Failed to trash documents', error);
     }
-
-    await loadDocuments(user);
   };
 
   const restoreDocuments = async (ids: string[]) => {
-    if (!user || ids.length === 0) return;
-
-    const { error } = await supabase
-      .from('documents')
-      .update({
-        is_trashed: false,
-        trashed_at: null,
-      })
-      .in('id', ids);
-
-    if (error) {
-      console.error('Failed to restore documents', error.message);
-      return;
+    try {
+      await restoreDocumentsMutation.mutateAsync(ids);
+    } catch (error) {
+      console.error('Failed to restore documents', error);
     }
-
-    await loadDocuments(user);
   };
 
   const permanentlyDeleteDocuments = async (ids: string[]) => {
     await deleteDocuments(ids);
   };
 
-  const activeDocuments = useMemo(() => allDocuments.filter((doc) => !doc.isTrashed), [allDocuments]);
-  const starredDocuments = useMemo(
-    () => allDocuments.filter((doc) => doc.isStarred && !doc.isTrashed),
-    [allDocuments],
-  );
-  const trashedDocuments = useMemo(() => allDocuments.filter((doc) => doc.isTrashed), [allDocuments]);
+  const documents = allDocuments.filter((doc) => !doc.isTrashed);
+  const starredDocuments = allDocuments.filter((doc) => doc.isStarred && !doc.isTrashed);
+  const trashedDocuments = allDocuments.filter((doc) => doc.isTrashed);
 
   return (
     <AppContext.Provider
       value={{
         user,
         isAuthenticated: !!user,
-        isAuthLoading,
-        documents: activeDocuments,
+        isAuthLoading: sessionQuery.isLoading,
+        documents,
         starredDocuments,
         trashedDocuments,
         login,
         signup,
         logout,
         setUserRole,
+        updateProfile,
         addDocuments,
         updateDocument,
         deleteDocuments,

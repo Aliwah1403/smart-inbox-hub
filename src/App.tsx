@@ -9,6 +9,8 @@ import { FolderProvider } from "@/context/FolderContext";
 import { NotificationProvider } from "@/context/NotificationContext";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
 import Dashboard from "./pages/Dashboard";
 import Documents from "./pages/Documents";
 import Folders from "./pages/Folders";
@@ -36,6 +38,8 @@ const App = () => (
                   <Route path="/" element={<Navigate to="/documents" replace />} />
                   <Route path="/login" element={<Login />} />
                   <Route path="/signup" element={<Signup />} />
+                  <Route path="/forgot-password" element={<ForgotPassword />} />
+                  <Route path="/reset-password" element={<ResetPassword />} />
                   <Route path="/dashboard" element={<Dashboard />} />
                   <Route path="/documents" element={<Documents />} />
                   <Route path="/folders" element={<Folders />} />
