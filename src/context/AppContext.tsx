@@ -218,7 +218,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       value={{
         user,
         isAuthenticated: !!user,
-        isAuthLoading: sessionQuery.isLoading,
+        isAuthLoading: sessionQuery.isLoading && sessionQuery.data === undefined,
         documents,
         starredDocuments,
         trashedDocuments,

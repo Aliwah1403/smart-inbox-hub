@@ -17,7 +17,7 @@ export default function Login() {
 
   useEffect(() => {
     if (!isAuthLoading && isAuthenticated) {
-      navigate('/documents', { replace: true });
+      navigate('/dashboard', { replace: true });
     }
   }, [isAuthenticated, isAuthLoading, navigate]);
 
@@ -29,7 +29,7 @@ export default function Login() {
     const success = await login(email, password);
     
     if (success) {
-      navigate('/documents');
+      navigate('/dashboard');
     } else {
       setErrorMessage('Invalid email or password. Please try again.');
     }
